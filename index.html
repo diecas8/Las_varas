@@ -7,10 +7,28 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhESMIAAAAABJRU5ErkJggg==" type="image/x-icon">
     <style>
-        /* ... [Mantén los estilos anteriores] ... */
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
         
-        /* Nuevo contenedor de herramientas */
+        #title {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
         #toolbar {
             position: absolute;
             top: 1rem;
@@ -24,12 +42,6 @@
 
         .tool-section {
             margin-bottom: 1rem;
-        }
-
-        .tool-section h4 {
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-            color: #2c3e50;
         }
 
         .file-input {
@@ -55,14 +67,48 @@
             flex-shrink: 0;
         }
 
-        .analysis-tool {
-            margin-bottom: 1rem;
+        #search-container {
+            position: absolute;
+            top: 1.2rem;
+            right: 1rem;
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            padding: 0.5rem;
+            border-radius: 25px;
+            display: flex;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .analysis-tool select {
-            width: 100%;
-            padding: 0.3rem;
-            margin: 0.3rem 0;
+        #search-input {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 25px;
+            margin-right: 0.5rem;
+        }
+
+        .leaflet-control-geosearch {
+            flex: 1;
+        }
+
+        #legend {
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            line-height: 1.8;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
     </style>
 </head>
@@ -70,7 +116,6 @@
     <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
     <div id="map"></div>
     
-    <!-- Barra de herramientas -->
     <div id="toolbar">
         <div class="tool-section">
             <h4>Cargar Datos</h4>
@@ -106,7 +151,7 @@
     <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://npmcdn.com/@turf/turf@6/turf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ omnivore/0.3.4/leaflet-omnivore.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/omnivore/0.3.4/leaflet-omnivore.min.js"></script>
 
     <script>
         const map = L.map('map', {
@@ -114,18 +159,17 @@
             zoom: 10
         });
 
-        // Capas base
-        const googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        // Capas base con HTTPS
+        const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: 'Google Maps'
         }).addTo(map);
 
-        const esriSatellite = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Esri'
         });
 
-        // Control de capas
         const baseLayers = {
             "Google Streets": googleStreets,
             "Satélite Esri": esriSatellite
@@ -142,11 +186,9 @@
             const layerId = `userLayer_${currentLayerId++}`;
             userLayers[layerId] = layer;
             
-            // Añadir a controles de capas
             overlayLayers[name] = layer;
             layer.addTo(map);
             
-            // Actualizar lista de capas
             const layerItem = document.createElement('li');
             layerItem.className = 'layer-item';
             layerItem.innerHTML = `
@@ -193,7 +235,7 @@
             }
         });
 
-        // Funciones de gestión de capas
+        // Gestión de capas
         function removeLayer(layerId) {
             const layer = userLayers[layerId];
             map.removeLayer(layer);
@@ -204,17 +246,11 @@
         function moveLayerUp(layerId) {
             const layer = userLayers[layerId];
             layer.bringToFront();
-            updateLayerOrder();
         }
 
         function moveLayerDown(layerId) {
             const layer = userLayers[layerId];
             layer.bringToBack();
-            updateLayerOrder();
-        }
-
-        function updateLayerOrder() {
-            // Implementación opcional para persistencia de orden
         }
 
         // Herramientas de análisis
@@ -260,13 +296,28 @@
                 Object.entries(userLayers).forEach(([id, layer]) => {
                     const option = document.createElement('option');
                     option.value = id;
-                    option.textContent = layer.options.name || 'Capa sin nombre';
+                    option.textContent = Object.keys(overlayLayers).find(key => overlayLayers[key] === layer) || 'Capa sin nombre';
                     select.appendChild(option);
                 });
             });
         }
 
-        // Llamar al cargar
+        // Control de búsqueda
+        const searchControl = new GeoSearch.GeoSearchControl({
+            provider: new GeoSearch.OpenStreetMapProvider(),
+            style: 'button',
+            showMarker: true,
+            marker: {
+                icon: L.icon({
+                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+                })
+            },
+            autoClose: true,
+            keepResult: true
+        });
+
+        map.addControl(searchControl);
         updateAnalysisOptions();
     </script>
 </body>
