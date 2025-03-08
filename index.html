@@ -3,105 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geoportal Interactivo</title>
+    <title>Geoportal Tumaco - Manglares</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     
-    <!-- Estilos personalizados -->
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-        }
-        
-        #map {
-            width: 100vw;
-            height: 100vh;
-        }
-        
-        .leaflet-control-layers {
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
+        body { margin: 0; padding: 0; }
+        #map { width: 100vw; height: 100vh; }
+        .leaflet-control-layers { max-height: 80vh; overflow-y: auto; }
         .sidebar {
             position: fixed;
             top: 10px;
-            right: 10px;
+            left: 10px;
             z-index: 1000;
-            background: white;
+            background: rgba(255, 255, 255, 0.9);
             padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <h3>Capas</h3>
+        <h3 style="margin-top: 0; color: #2c3e50;">Capas de Manglares</h3>
         <div id="layerControl"></div>
     </div>
     <div id="map"></div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <!-- Plugin para Google Maps -->
+    <!-- Plugin Google Maps -->
     <script src="https://unpkg.com/leaflet.googlemutant@latest/dist/leaflet.googlemutant.js"></script>
 
     <script>
-        // Inicializar mapa
-        var map = L.map('map').setView([4.6097, -74.0817], 12); // Coordenadas iniciales (ej: Bogotá)
+        // Configuración inicial del mapa (coordenadas de Tumaco)
+        var map = L.map('map').setView([1.8067, -78.7647], 12);
 
         // Capas base
         var baseLayers = {
-            "Google Maps": L.gridLayer.googleMutant({
-                type: 'roadmap' // roadmap, satellite, hybrid, terrain
-            }),
             "Google Satélite": L.gridLayer.googleMutant({
-                type: 'satellite'
+                type: 'satellite',
+                maxZoom: 20
+            }),
+            "Google Maps": L.gridLayer.googleMutant({
+                type: 'roadmap'
             }),
             "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
+                attribution: '© OpenStreetMap'
             })
         };
 
-        // Capas GeoJSON (ejemplo - reemplazar con tus URLs)
-        var edificaciones = L.geoJSON(null, {
-            style: {color: '#FF5733', weight: 1},
-            onEachFeature: function(feature, layer) {
-                layer.bindPopup('Edificio: ' + feature.properties.name);
-            }
-        }).addTo(map);
-        
-        var vias = L.geoJSON(null, {
-            style: {color: '#2E4053', weight: 2},
-            onEachFeature: function(feature, layer) {
-                layer.bindPopup('Vía: ' + feature.properties.name);
-            }
-        });
-
-        // Cargar GeoJSONs (reemplazar con tus URLs)
-        fetch('tu_edificaciones.geojson')
-            .then(response => response.json())
-            .then(data => edificaciones.addData(data));
-
-        fetch('tu_vias.geojson')
-            .then(response => response.json())
-            .then(data => vias.addData(data));
-
-        // Control de capas
-        var overlayLayers = {
-            "Edificaciones": edificaciones,
-            "Vías": vias
+        // Estilos para cada capa
+        var geojsonStyles = {
+            "Cabo_manglar": { color: "#1d5a1a", weight: 2, fillOpacity: 0.3 },
+            "Consejo_las_varas": { color: "#3d8f37", weight: 2, dashArray: "5,5" },
+            "Cor_mangle": { color: "#4CAF50", weight: 3, fillOpacity: 0.5 },
+            "Mangle_consejo": { color: "#2E7D32", weight: 2, opacity: 0.8 },
+            "Tumaco": { color: "#2196F3", weight: 2, fillColor: "#64B5F6" },
+            "constricciones": { color: "#d32f2f", weight: 4, opacity: 0.7 }
         };
 
-        L.control.layers(baseLayers, overlayLayers, {
-            collapsed: false
-        }).addTo(map);
+        // Función para cargar GeoJSONs
+        function loadGeoJSON(url, style) {
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    return L.geoJSON(data, {
+                        style: style,
+                        onEachFeature: function(feature, layer) {
+                            let popupContent = `<b>${feature.properties.nombre || 'Capa'}</b>`;
+                            if(feature.properties) {
+                                for(let key in feature.properties) {
+                                    popupContent += `<br>${key}: ${feature.properties[key]}`;
+                                }
+                            }
+                            layer.bindPopup(popupContent);
+                        }
+                    });
+                });
+        }
 
-        // Añadir capa base por defecto
-        baseLayers["Google Maps"].addTo(map);
+        // Cargar todas las capas
+        Promise.all([
+            loadGeoJSON('Cabo_manglar.geojson', geojsonStyles.Cabo_manglar),
+            loadGeoJSON('Consejo_las_varas.geojson', geojsonStyles.Consejo_las_varas),
+            loadGeoJSON('Cor_mangle.geojson', geojsonStyles.Cor_mangle),
+            loadGeoJSON('Mangle_consejo.geojson', geojsonStyles.Mangle_consejo),
+            loadGeoJSON('Tumaco.geojson', geojsonStyles.Tumaco),
+            loadGeoJSON('constricciones.geojson', geojsonStyles.constricciones)
+        ]).then(layers => {
+            const overlayLayers = {
+                "Cabo Manglar": layers[0],
+                "Consejo Las Varitas": layers[1],
+                "Corredor Mangle": layers[2],
+                "Mangle Consejo": layers[3],
+                "Área Tumaco": layers[4],
+                "Constricciones": layers[5]
+            };
+
+            // Añadir control de capas
+            L.control.layers(baseLayers, overlayLayers, {
+                collapsed: false,
+                position: 'topright'
+            }).addTo(map);
+
+            // Añadir capa base inicial
+            baseLayers["Google Satélite"].addTo(map);
+        });
+
+        // Añadir escala
+        L.control.scale({ position: 'bottomleft' }).addTo(map);
     </script>
 </body>
 </html>
