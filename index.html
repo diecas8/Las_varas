@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Geoportal Interactivo</title>
+    <title>Geoportal Interactivo - Tumaco</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <style>
-        #map { height: 500px; }
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+        }
         .leaflet-control-attribution {
             position: absolute;
             bottom: 0;
@@ -22,7 +25,7 @@
     <div id="map"></div>
 
     <script>
-        var map = L.map('map').setView([0, 0], 2); // Centrado inicial en [0, 0] con zoom 2
+        var map = L.map('map').setView([1.795, -78.825], 10); // Centrado en Tumaco con zoom 10
 
         // Capas base
         var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -36,12 +39,12 @@
         });
 
         // Capas GeoJSON
-        var caboManglar = L.geoJSON(null, { style: { color: 'red' } }).addTo(map);
-        var consejoLasVaras = L.geoJSON(null, { style: { color: 'blue' } }).addTo(map);
-        var corMangle = L.geoJSON(null, { style: { color: 'green' } }).addTo(map);
-        var mangleConsejo = L.geoJSON(null, { style: { color: 'purple' } }).addTo(map);
-        var tumaco = L.geoJSON(null, { style: { color: 'orange' } }).addTo(map);
-        var constricciones = L.geoJSON(null, { style: { color: 'brown' } }).addTo(map);
+        var caboManglar = L.geoJSON(null, { style: { color: 'red' } });
+        var consejoLasVaras = L.geoJSON(null, { style: { color: 'blue' } });
+        var corMangle = L.geoJSON(null, { style: { color: 'green' } });
+        var mangleConsejo = L.geoJSON(null, { style: { color: 'purple' } });
+        var tumaco = L.geoJSON(null, { style: { color: 'orange' } }).addTo(map); // Tumaco se agrega al mapa inicialmente
+        var constricciones = L.geoJSON(null, { style: { color: 'brown' } });
 
         // Cargar datos GeoJSON (reemplaza con tus rutas reales)
         fetch('Cabo_manglar.geojson')
