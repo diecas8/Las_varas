@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geoportal Consejo Comunitario Las Varas</title>
+    <title>Geoportal Pas de Manglares</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -103,7 +103,12 @@
         // Función para cargar y mostrar capas
         function loadLayer(layerName, style) {
             fetch(`${layerName}.geojson`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error cargando ${layerName}.geojson: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     layers[layerName] = L.geoJSON(data, {
                         style: style,
@@ -117,13 +122,18 @@
                             layer.bindPopup(popupContent);
                         }
                     });
-                    document.getElementById(layerName).addEventListener('change', function(e) {
+
+                    document.getElementById(layerName.replace(/_/g, '')).addEventListener('change', function(e) {
                         if(e.target.checked) {
                             layers[layerName].addTo(map);
                         } else {
                             map.removeLayer(layers[layerName]);
                         }
                     });
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert(`Error cargando la capa ${layerName}: ${error.message}`);
                 });
         }
 
@@ -137,6 +147,9 @@
 
         // Añadir control de capas base
         L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+
+        // Añadir escala
+        L.control.scale({ position: 'bottomleft' }).addTo(map);
     </script>
 </body>
 </html>
