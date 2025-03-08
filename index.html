@@ -16,8 +16,9 @@
             bottom: 0;
             left: 0;
             padding: 0 5px;
-            font-size: 11px;
-            background: rgba(255,255,255,0.7);
+            font-size: 14px; /* Aumenta el tamaño de la fuente */
+            background: rgba(255,255,255,0.8); /* Ajusta la transparencia */
+            font-weight: bold; /* Hace que el texto sea negrita */
         }
         #title {
             position: absolute;
@@ -26,6 +27,8 @@
             z-index: 401;
             background: rgba(255,255,255,0.7);
             padding: 5px;
+            font-size: 18px; /* Aumenta el tamaño de la fuente */
+            font-weight: bold; /* Hace que el texto sea negrita */
         }
     </style>
 </head>
@@ -126,7 +129,7 @@
             .then(data => constricciones.addData(data));
 
         var baseMaps = {
-            "Google Streets": googleStreets,
+            "Google Streets": googleStreits,
             "Esri Satellite": esriSatellite
         };
 
