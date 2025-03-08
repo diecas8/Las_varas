@@ -5,148 +5,216 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
     <style>
         html, body, #map {
             height: 100%;
             margin: 0;
+            font-family: Arial, sans-serif;
         }
-        .leaflet-control-attribution {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            padding: 0 5px;
-            font-size: 14px;
-            background: rgba(255,255,255,0.8);
-            font-weight: bold;
-        }
+        
+        /* Mejoras en controles */
         #title {
             position: absolute;
-            top: 10px;
+            top: 1rem;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 401;
-            background: rgba(255,255,255,0.7);
-            padding: 5px;
-            font-size: 18px;
-            font-weight: bold;
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 1.2rem;
+            font-weight: 600;
         }
-        #legend {
+
+        #search-container {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            z-index: 401;
-            background: rgba(255,255,255,0.8);
-            padding: 10px;
-            border-radius: 5px;
+            top: 1.2rem;
+            right: 1rem;
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            padding: 0.5rem;
+            border-radius: 25px;
+            display: flex;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+
+        #search-input {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 25px;
+            margin-right: 0.5rem;
+        }
+
+        .leaflet-control-geosearch {
+            flex: 1;
+        }
+
+        /* Mejoras en leyenda */
+        #legend {
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            line-height: 1.8;
+        }
+
         .legend-item {
             display: flex;
             align-items: center;
-            margin-bottom: 5px;
         }
+
         .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 5px;
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
             border-radius: 50%;
+            flex-shrink: 0;
         }
-        #search-container {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 401;
-            background: rgba(255,255,255,0.8);
-            padding: 5px;
-            border-radius: 5px;
+
+        /* Mejoras en popups */
+        .leaflet-popup-content {
+            font-size: 14px;
+            line-height: 1.4;
         }
-        #search-input {
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            #title {
+                font-size: 1rem;
+                padding: 0.5rem 1rem;
+            }
+            
+            #search-container {
+                top: 0.5rem;
+                right: 0.5rem;
+                padding: 0.3rem;
+            }
+            
+            #search-input {
+                font-size: 12px;
+            }
         }
     </style>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
 </head>
 <body>
     <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
     <div id="map"></div>
-    <div id="legend"></div>
-    <div id="search-container">
-        <input type="text" id="search-input" placeholder="Buscar...">
-    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.umd.js"></script>
 
     <script>
-        var map = L.map('map').setView([1.795, -78.825], 10);
-
-        var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Map data &copy; <a href="https://www.google.com/maps/">Google Maps</a>'
-        }).addTo(map);
-
-        var esriSatellite = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        // Configuración inicial del mapa
+        const map = L.map('map', {
+            center: [1.795, -78.825],
+            zoom: 10,
+            layers: []
         });
 
-        var caboManglar = L.geoJSON(null, { style: { color: 'red' }, onEachFeature: onEachFeature });
-        var consejoLasVaras = L.geoJSON(null, { style: { color: 'blue' }, onEachFeature: onEachFeature });
-        var corMangle = L.geoJSON(null, { style: { color: 'green' }, onEachFeature: onEachFeature });
-        var mangleConsejo = L.geoJSON(null, { style: { color: 'purple' }, onEachFeature: onEachFeature });
-        var tumaco = L.geoJSON(null, { style: { color: 'orange' }, onEachFeature: onEachFeature }).addTo(map);
-        var constricciones = L.geoJSON(null, { style: { color: 'brown' }, onEachFeature: onEachFeature });
+        // Capas base
+        const baseLayers = {
+            "Google Streets": L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: 'Google Maps'
+            }),
+            "Satélite Esri": L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }).addTo(map)
+        };
 
-        function onEachFeature(feature, layer) {
-            layer.on('click', function (e) {
-                map.fitBounds(e.target.getBounds());
-                var popupContent = '<b>' + layer.feature.properties.name + '</b>';
-                layer.bindPopup(popupContent).openPopup();
+        // Capas de información
+        const overlayLayers = {
+            "Cabo Manglar": createGeoJSONLayer('red'),
+            "Consejo Las Varas": createGeoJSONLayer('blue'),
+            "Cor Mangle": createGeoJSONLayer('green'),
+            "Mangle Consejo": createGeoJSONLayer('purple'),
+            "Tumaco": createGeoJSONLayer('orange'),
+            "Constricciones": createGeoJSONLayer('brown')
+        };
+
+        // Control de capas
+        L.control.layers(baseLayers, overlayLayers, { collapsed: false }).addTo(map);
+        L.control.attribution({ prefix: 'Elaborado por Diego Castaño' }).addTo(map);
+
+        // Función para crear capas GeoJSON
+        function createGeoJSONLayer(color) {
+            return L.geoJSON(null, {
+                style: { color: color },
+                onEachFeature: (feature, layer) => {
+                    layer.bindPopup(`<b>${feature.properties.name}</b>`);
+                    
+                    layer.on({
+                        mouseover: (e) => {
+                            e.target.setStyle({ weight: 3, fillOpacity: 0.6 });
+                        },
+                        mouseout: (e) => {
+                            e.target.setStyle({ weight: 2, fillOpacity: 0.5 });
+                        },
+                        click: (e) => map.fitBounds(e.target.getBounds())
+                    });
+                }
             });
         }
 
-        fetch('Cabo_manglar.geojson').then(response => response.json()).then(data => caboManglar.addData(data));
-        fetch('Consejo_las_varas.geojson').then(response => response.json()).then(data => consejoLasVaras.addData(data));
-        fetch('Cor_mangle.geojson').then(response => response.json()).then(data => corMangle.addData(data));
-        fetch('Mangle_consejo.geojson').then(response => response.json()).then(data => mangleConsejo.addData(data));
-        fetch('Tumaco.geojson').then(response => response.json()).then(data => tumaco.addData(data));
-        fetch('constricciones.geojson').then(response => response.json()).then(data => constricciones.addData(data));
+        // Carga de datos
+        const files = [
+            'Cabo_manglar.geojson',
+            'Consejo_las_varas.geojson',
+            'Cor_mangle.geojson',
+            'Mangle_consejo.geojson',
+            'Tumaco.geojson',
+            'constricciones.geojson'
+        ];
 
-        var baseMaps = { "Google Streets": googleStreets, "Esri Satellite": esriSatellite };
-        var overlayMaps = {
-            "Cabo Manglar": caboManglar, "Consejo Las Varas": consejoLasVaras,
-            "Cor Mangle": corMangle, "Mangle Consejo": mangleConsejo,
-            "Tumaco": tumaco, "Constricciones": constricciones
-        };
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
+        files.forEach((file, index) => {
+            fetch(file)
+                .then(response => response.json())
+                .then(data => {
+                    const layer = overlayLayers[Object.keys(overlayLayers)[index]];
+                    layer.addData(data);
+                })
+                .catch(error => console.error(`Error cargando ${file}:`, error));
+        });
 
-        L.control.attribution({ prefix: 'Elaborado por Diego Castaño' }).addTo(map);
+        // Control de búsqueda
+        const searchControl = new GeoSearch.GeoSearchControl({
+            provider: new GeoSearch.OpenStreetMapProvider(),
+            style: 'button',
+            showMarker: true,
+            marker: {
+                icon: L.icon({
+                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+                })
+            },
+            autoClose: true,
+            keepResult: true
+        });
+
+        map.addControl(searchControl);
 
         // Leyenda
-        var legend = L.control({ position: 'bottomleft' });
-        legend.onAdd = function (map) {
-            var div = L.DomUtil.create('div', 'legend');
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: red;"></div>Cabo Manglar</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: blue;"></div>Consejo Las Varas</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: green;"></div>Cor Mangle</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: purple;"></div>Mangle Consejo</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: orange;"></div>Tumaco</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: brown;"></div>Constricciones</div>';
+        const legend = L.control({ position: 'bottomleft' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = '<h4>Leyenda</h4>';
+            
+            Object.entries(overlayLayers).forEach(([name, layer]) => {
+                const color = layer.options.style.color;
+                div.innerHTML += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${color}"></div>
+                        ${name}
+                    </div>
+                `;
+            });
+            
             return div;
         };
         legend.addTo(map);
-
-        // Búsqueda
-        var searchControl = new L.Control.GeoSearch({
-            provider: new L.GeoSearch.OpenStreetMapProvider(),
-            showMarker: true,
-            showPopup: false,
-            autoClose: true,
-            retainZoomLevel: false,
-            animateZoom: true,
-            searchLabel: 'Buscar...',
-            notFoundMessage: 'No se encontró la ubicación'
-        });
-        map.addControl(searchControl);
     </script>
 </body>
 </html>
