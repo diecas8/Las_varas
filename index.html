@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <link rel="icon" href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhESMIAAAAABJRU5ErkJggg==" type="image/x-icon">
     <style>
         html, body, #map {
@@ -20,7 +19,7 @@
             top: 1rem;
             left: 1rem;
             z-index: 1000;
-            background: rgba(255,255,255,0.9);
+            background: white;
             padding: 1.5rem;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
@@ -28,9 +27,9 @@
         }
 
         .btn {
-            background: #4CAF50;
+            background: #2196F3;
             color: white;
-            padding: 10px 20px;
+            padding: 12px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -40,7 +39,7 @@
         }
 
         .btn:hover {
-            background: #45a049;
+            background: #0d47a1;
         }
 
         #layerList {
@@ -50,12 +49,12 @@
         }
 
         .layer-item {
-            display: flex;
-            align-items: center;
             padding: 8px;
-            background: #f8f9fa;
+            background: #f0f0f0;
             border-radius: 4px;
             margin: 5px 0;
+            display: flex;
+            align-items: center;
         }
 
         .layer-color {
@@ -70,7 +69,7 @@
             bottom: 1rem;
             right: 1rem;
             z-index: 1000;
-            background: rgba(255,255,255,0.9);
+            background: white;
             padding: 12px 20px;
             border-radius: 25px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
@@ -89,11 +88,10 @@
     <div id="toolbar">
         <h3>Cargar Capas</h3>
         
-        <!-- Botones de carga -->
-        <label for="geojsonInput" class="btn">Agregar GeoJSON</label>
+        <button class="btn" onclick="loadSampleGeoJSON()">Agregar Ejemplo GeoJSON</button>
         <input type="file" id="geojsonInput" accept=".geojson,.json" hidden>
         
-        <label for="kmlInput" class="btn">Agregar KML</label>
+        <button class="btn" onclick="loadSampleKML()">Agregar Ejemplo KML</button>
         <input type="file" id="kmlInput" accept=".kml" hidden>
 
         <h4>Capas Activas</h4>
@@ -102,7 +100,6 @@
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.umd.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="https://npmcdn.com/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/omnivore/0.3.4/leaflet-omnivore.min.js"></script>
 
@@ -138,8 +135,22 @@
                 color: color,
                 weight: 2,
                 opacity: 0.8,
-                fillOpacity: layer instanceof L.GeoJSON ? 0.3 : 1
+                fillOpacity: 0.3
             };
+
+            // Configuración especial para puntos
+            if (layer instanceof L.GeoJSON) {
+                layer.options.pointToLayer = function(feature, latlng) {
+                    return L.circleMarker(latlng, {
+                        radius: 6,
+                        fillColor: color,
+                        color: "#000",
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+                };
+            }
 
             layer.setStyle(style).addTo(map);
             
@@ -153,8 +164,10 @@
             `;
             document.getElementById('layerList').appendChild(layerDiv);
 
-            // Ajustar vista
-            map.fitBounds(layer.getBounds());
+            // Ajustar vista si hay features
+            if (layer.getLayers().length > 0) {
+                map.fitBounds(layer.getBounds());
+            }
         }
 
         // Carga de GeoJSON
@@ -165,12 +178,16 @@
             reader.onload = function() {
                 try {
                     const geojson = JSON.parse(reader.result);
-                    const layer = L.geoJSON(geojson);
+                    const layer = L.geoJSON(geojson, {
+                        onEachFeature: function(feature, layer) {
+                            layer.bindPopup(`<b>${feature.properties.name || 'Sin nombre'}</b>`);
+                        }
+                    });
                     const color = `#${Math.floor(Math.random()*16777215).toString(16)}`;
                     
                     addLayer(layer, file.name, color);
                 } catch (error) {
-                    alert('Error al cargar GeoJSON');
+                    alert('Error al cargar GeoJSON: Formato inválido');
                     console.error(error);
                 }
             };
@@ -192,13 +209,72 @@
                         addLayer(layer, file.name, color);
                     });
                 } catch (error) {
-                    alert('Error al cargar KML');
+                    alert('Error al cargar KML: Formato inválido');
                     console.error(error);
                 }
             };
 
             reader.readAsText(file);
         });
+
+        // Capa de ejemplo GeoJSON
+        function loadSampleGeoJSON() {
+            const sampleGeoJSON = {
+                "type": "FeatureCollection",
+                "features": [{
+                    "type": "Feature",
+                    "properties": {"name": "Ejemplo GeoJSON"},
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[
+                            [-78.85, 1.75],
+                            [-78.80, 1.75],
+                            [-78.80, 1.80],
+                            [-78.85, 1.80],
+                            [-78.85, 1.75]
+                        ]]
+                    }
+                }]
+            };
+            
+            const layer = L.geoJSON(sampleGeoJSON);
+            const color = '#FF5733';
+            addLayer(layer, 'Ejemplo GeoJSON', color);
+        }
+
+        // Capa de ejemplo KML
+        function loadSampleKML() {
+            const sampleKML = `
+                <?xml version="1.0" encoding="UTF-8"?>
+                <kml xmlns="http://www.opengis.net/kml/2.2">
+                <Document>
+                    <Placemark>
+                        <name>Ejemplo KML</name>
+                        <Polygon>
+                            <outerBoundaryIs>
+                                <LinearRing>
+                                    <coordinates>
+                                        -78.90,1.85,0
+                                        -78.85,1.85,0
+                                        -78.85,1.90,0
+                                        -78.90,1.90,0
+                                        -78.90,1.85,0
+                                    </coordinates>
+                                </LinearRing>
+                            </outerBoundaryIs>
+                        </Polygon>
+                    </Placemark>
+                </Document>
+                </kml>
+            `;
+            
+            const layer = omnivore.kml.parse(sampleKML);
+            const color = '#4CAF50';
+            
+            layer.on('ready', () => {
+                addLayer(layer, 'Ejemplo KML', color);
+            });
+        }
 
         // Eliminar capa
         function removeLayer(layerId) {
