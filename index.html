@@ -29,7 +29,7 @@
     </style>
 </head>
 <body>
-    <img id="logo" src="URL_DE_TU_IMAGEN_BI" alt="Logo de Biocomercio Sostenible">
+    <img id="logo" src="URL_DIRECTA_DE_TU_IMAGEN_BI" alt="Logo de Biocomercio Sostenible">
     <div id="map"></div>
 
     <script>
@@ -48,7 +48,8 @@
         var caboManglar = L.geoJSON(null, { 
             style: { color: 'red' },
             onEachFeature: function (feature, layer) {
-                layer.on('click', function () {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
                     alert('Cabo Manglar');
                 });
             }
@@ -56,7 +57,8 @@
         var consejoLasVaras = L.geoJSON(null, { 
             style: { color: 'blue' },
             onEachFeature: function (feature, layer) {
-                layer.on('click', function () {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
                     alert('Consejo Las Varas');
                 });
             }
@@ -64,7 +66,8 @@
         var corMangle = L.geoJSON(null, { 
             style: { color: 'green' },
             onEachFeature: function (feature, layer) {
-                layer.on('click', function () {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
                     alert('Cor Mangle');
                 });
             }
@@ -72,7 +75,8 @@
         var mangleConsejo = L.geoJSON(null, { 
             style: { color: 'purple' },
             onEachFeature: function (feature, layer) {
-                layer.on('click', function () {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
                     alert('Mangle Consejo');
                 });
             }
@@ -80,7 +84,8 @@
         var tumaco = L.geoJSON(null, { 
             style: { color: 'orange' },
             onEachFeature: function (feature, layer) {
-                layer.on('click', function () {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
                     alert('Tumaco');
                 });
             }
@@ -88,7 +93,8 @@
         var constricciones = L.geoJSON(null, { 
             style: { color: 'brown' },
             onEachFeature: function (feature, layer) {
-                layer.on('click', function () {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
                     alert('Constricciones');
                 });
             }
