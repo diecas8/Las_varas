@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Interactivo</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    
+    <!-- Estilos personalizados -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .leaflet-control-layers {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>Capas</h3>
+        <div id="layerControl"></div>
+    </div>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- Plugin para Google Maps -->
+    <script src="https://unpkg.com/leaflet.googlemutant@latest/dist/leaflet.googlemutant.js"></script>
+
+    <script>
+        // Inicializar mapa
+        var map = L.map('map').setView([4.6097, -74.0817], 12); // Coordenadas iniciales (ej: Bogotá)
+
+        // Capas base
+        var baseLayers = {
+            "Google Maps": L.gridLayer.googleMutant({
+                type: 'roadmap' // roadmap, satellite, hybrid, terrain
+            }),
+            "Google Satélite": L.gridLayer.googleMutant({
+                type: 'satellite'
+            }),
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            })
+        };
+
+        // Capas GeoJSON (ejemplo - reemplazar con tus URLs)
+        var edificaciones = L.geoJSON(null, {
+            style: {color: '#FF5733', weight: 1},
+            onEachFeature: function(feature, layer) {
+                layer.bindPopup('Edificio: ' + feature.properties.name);
+            }
+        }).addTo(map);
+        
+        var vias = L.geoJSON(null, {
+            style: {color: '#2E4053', weight: 2},
+            onEachFeature: function(feature, layer) {
+                layer.bindPopup('Vía: ' + feature.properties.name);
+            }
+        });
+
+        // Cargar GeoJSONs (reemplazar con tus URLs)
+        fetch('tu_edificaciones.geojson')
+            .then(response => response.json())
+            .then(data => edificaciones.addData(data));
+
+        fetch('tu_vias.geojson')
+            .then(response => response.json())
+            .then(data => vias.addData(data));
+
+        // Control de capas
+        var overlayLayers = {
+            "Edificaciones": edificaciones,
+            "Vías": vias
+        };
+
+        L.control.layers(baseLayers, overlayLayers, {
+            collapsed: false
+        }).addTo(map);
+
+        // Añadir capa base por defecto
+        baseLayers["Google Maps"].addTo(map);
+    </script>
+</body>
+</html>
