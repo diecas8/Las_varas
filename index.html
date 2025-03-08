@@ -9,121 +9,112 @@
     <style>
         html, body, #map { height: 100%; margin: 0; }
         
-        /* Botón flotante */
-        #uploadBtn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            transition: 0.3s;
-        }
-        
-        #uploadBtn:hover { transform: scale(1.05); }
-        
-        /* Contenedor de carga */
-        #uploadContainer {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            z-index: 1000;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: none;
-        }
-        
-        /* Estilos para capas */
-        .leaflet-control-layers {
+        /* Barra de control compacta */
+        #control-panel {
+            position: absolute;
             top: 10px;
             right: 10px;
-            max-height: 80vh;
-            overflow-y: auto;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
             border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 300px;
+        }
+
+        #file-input {
+            margin: 5px 0;
+        }
+
+        /* Estilo para capas predefinidas */
+        .layer-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .color-box {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #control-panel {
+                max-width: 90%;
+                right: 5%;
+            }
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    
-    <!-- Botón de carga -->
-    <div id="uploadBtn">+</div>
-    
-    <!-- Contenedor de carga -->
-    <div id="uploadContainer">
-        <input type="file" id="fileInput" accept=".geojson,.kml" style="margin-bottom:10px">
-        <select id="layerSelect"></select>
-        <button onclick="toggleLayerVisibility()">Mostrar/Ocultar</button>
+
+    <!-- Panel de control compacto -->
+    <div id="control-panel">
+        <input type="file" id="file-input" accept=".geojson,.kml" style="width: 100%">
+        
+        <div id="layers-list">
+            <h4>Capas</h4>
+            <div class="layer-item">
+                <input type="checkbox" id="tumaco-check" checked>
+                <label for="tumaco-check">Tumaco</label>
+                <div class="color-box" style="background: #FFA500"></div>
+            </div>
+            <!-- Más capas predefinidas se agregarán aquí -->
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <script src="https://npmcdn.com/@turf/turf@6/turf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/omnivore/0.3.4/leaflet-omnivore.min.js"></script>
 
     <script>
         const map = L.map('map').setView([1.795, -78.825], 10);
-        const baseLayers = {
-            "Google Streets": L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-                subdomains: ['mt0','mt1','mt2','mt3'],
-                attribution: 'Google Maps'
-            }).addTo(map),
-            "Satélite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri'
-            })
-        };
+
+        // Capas base
+        const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0','mt1','mt2','mt3'],
+            attribution: 'Google Maps'
+        }).addTo(map);
+
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Esri'
+        });
 
         // Capas predefinidas
-        const predefinedLayers = {
-            "Cabo Manglar": { file: 'Cabo_manglar.geojson', color: '#FF0000' },
-            "Consejo Las Varas": { file: 'Consejo_las_varas.geojson', color: '#0000FF' },
-            "Tumaco": { file: 'Tumaco.geojson', color: '#FFA500' }
+        const layers = {
+            'Tumaco': {
+                file: 'Tumaco.geojson',
+                color: '#FFA500'
+            },
+            // Agrega aquí más capas predefinidas
         };
 
-        const overlayLayers = {};
-        const allLayers = {};
+        // Control de capas
+        const layerControl = L.control.layers({
+            'Google Streets': googleStreets,
+            'Satélite Esri': esriSatellite
+        }, {}, { collapsed: false }).addTo(map);
 
-        // Cargar capas predefinidas
-        Object.entries(predefinedLayers).forEach(([name, config]) => {
+        // Carga capas predefinidas
+        Object.entries(layers).forEach(([name, config]) => {
             fetch(config.file)
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
                     const layer = L.geoJSON(data, {
-                        style: { color: config.color, fillOpacity: 0.3 },
-                        onEachFeature: (f, l) => l.bindPopup(f.properties.name || name)
-                    });
-                    overlayLayers[name] = layer;
-                    allLayers[name] = layer;
-                    updateLayerControl();
+                        style: { color: config.color }
+                    }).addTo(map);
+                    
+                    layerControl.addOverlay(layer, name);
+                    createLayerCheckbox(name, config.color);
                 });
         });
 
-        // Control de capas
-        const layerControl = L.control.layers(baseLayers, overlayLayers, { collapsed: false }).addTo(map);
-        L.control.attribution({ prefix: 'Elaborado por: Diego Castaño, Esp. Sig.' }).addTo(map);
-
-        // Función para actualizar control de capas
-        function updateLayerControl() {
-            layerControl.remove();
-            layerControl.addTo(map);
-            document.getElementById('layerSelect').innerHTML = 
-                Object.keys(allLayers).map(name => `<option value="${name}">${name}</option>`).join('');
-        }
-
-        // Evento para mostrar/ocultar contenedor
-        document.getElementById('uploadBtn').addEventListener('click', () => {
-            const container = document.getElementById('uploadContainer');
-            container.style.display = container.style.display === 'block' ? 'none' : 'block';
-        });
-
         // Carga de archivos
-        document.getElementById('fileInput').addEventListener('change', (e) => {
+        document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
             
@@ -135,19 +126,17 @@
                     if (format === 'kml') {
                         layer = omnivore.kml.parse(reader.result);
                     } else {
-                        const geojson = JSON.parse(reader.result);
-                        layer = L.geoJSON(geojson);
+                        layer = L.geoJSON(JSON.parse(reader.result));
                     }
 
                     const color = '#' + Math.floor(Math.random()*16777215).toString(16);
                     const name = file.name.split('.')[0];
                     
-                    layer.setStyle({ color: color, fillOpacity: 0.3 });
-                    layer.bindPopup(name);
+                    layer.setStyle({ color: color });
+                    layer.addTo(map);
                     
-                    overlayLayers[name] = layer;
-                    allLayers[name] = layer;
-                    updateLayerControl();
+                    layerControl.addOverlay(layer, name);
+                    createLayerCheckbox(name, color);
                     
                 } catch (error) {
                     alert('Error al cargar el archivo');
@@ -155,19 +144,31 @@
                 }
             };
 
-            if (file) reader.readAsText(file);
+            reader.readAsText(file);
         });
 
-        // Función para alternar visibilidad
-        function toggleLayerVisibility() {
-            const selectedLayer = document.getElementById('layerSelect').value;
-            const layer = allLayers[selectedLayer];
+        // Crear checkbox para capas
+        function createLayerCheckbox(name, color) {
+            const div = document.createElement('div');
+            div.className = 'layer-item';
             
-            if (map.hasLayer(layer)) {
-                map.removeLayer(layer);
-            } else {
-                map.addLayer(layer);
-            }
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = true;
+            
+            const label = document.createElement('label');
+            label.textContent = name;
+            label.style.marginLeft = '5px';
+            
+            const colorBox = document.createElement('div');
+            colorBox.className = 'color-box';
+            colorBox.style.backgroundColor = color;
+            
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            div.appendChild(colorBox);
+            
+            document.getElementById('layers-list').appendChild(div);
         }
     </script>
 </body>
