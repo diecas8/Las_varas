@@ -15,46 +15,66 @@
             font-family: Arial, sans-serif;
         }
 
-        #credits {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: rgba(255,255,255,0.9);
-            padding: 8px 15px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            font-size: 14px;
-            text-align: right;
-        }
-
         #toolbar {
             position: absolute;
             top: 1rem;
             left: 1rem;
             z-index: 1000;
             background: rgba(255,255,255,0.9);
-            padding: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 300px;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 350px;
         }
 
-        .file-input {
-            margin-bottom: 1rem;
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 0;
+            width: 100%;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #45a049;
+        }
+
+        #layerList {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
         }
 
         .layer-item {
             display: flex;
             align-items: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
             margin: 5px 0;
         }
 
         .layer-color {
             width: 18px;
             height: 18px;
-            margin-right: 8px;
+            margin-right: 10px;
             border-radius: 3px;
+        }
+
+        #credits {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            padding: 12px 20px;
+            border-radius: 25px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
         }
     </style>
 </head>
@@ -67,10 +87,16 @@
     </div>
 
     <div id="toolbar">
-        <h3>Cargar Datos</h3>
-        <input type="file" id="fileInput" accept=".geojson,.json,.kml">
+        <h3>Cargar Capas</h3>
         
-        <h4>Capas Cargadas</h4>
+        <!-- Botones de carga -->
+        <label for="geojsonInput" class="btn">Agregar GeoJSON</label>
+        <input type="file" id="geojsonInput" accept=".geojson,.json" hidden>
+        
+        <label for="kmlInput" class="btn">Agregar KML</label>
+        <input type="file" id="kmlInput" accept=".kml" hidden>
+
+        <h4>Capas Activas</h4>
         <div id="layerList"></div>
     </div>
 
@@ -83,7 +109,7 @@
     <script>
         const map = L.map('map').setView([1.795, -78.825], 10);
 
-        // Capas base
+        // Capa base
         L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
@@ -99,62 +125,52 @@
         map.addControl(searchControl);
 
         // Variables globales
+        let layers = {};
         let layerCounter = 0;
-        const layers = {};
 
         // Función para agregar capas
         function addLayer(layer, name, color) {
             const layerId = `layer_${layerCounter++}`;
             layers[layerId] = layer;
-            
-            // Estilos según tipo de geometría
-            layer.setStyle({
+
+            // Estilos según geometría
+            const style = {
                 color: color,
                 weight: 2,
                 opacity: 0.8,
-                fillOpacity: 0.3
-            });
+                fillOpacity: layer instanceof L.GeoJSON ? 0.3 : 1
+            };
 
-            // Agregar al mapa
-            layer.addTo(map).bringToFront();
+            layer.setStyle(style).addTo(map);
             
-            // Crear elemento en lista
-            const layerElement = document.createElement('div');
-            layerElement.className = 'layer-item';
-            layerElement.innerHTML = `
+            // Elemento en lista
+            const layerDiv = document.createElement('div');
+            layerDiv.className = 'layer-item';
+            layerDiv.innerHTML = `
                 <div class="layer-color" style="background-color: ${color}"></div>
                 ${name}
-                <button onclick="removeLayer('${layerId}')">×</button>
+                <button onclick="removeLayer('${layerId}')" style="margin-left:auto">×</button>
             `;
-            document.getElementById('layerList').appendChild(layerElement);
-            
-            // Ajustar vista al cargar
+            document.getElementById('layerList').appendChild(layerDiv);
+
+            // Ajustar vista
             map.fitBounds(layer.getBounds());
         }
 
-        // Carga de archivos
-        document.getElementById('fileInput').addEventListener('change', function(e) {
+        // Carga de GeoJSON
+        document.getElementById('geojsonInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             const reader = new FileReader();
 
             reader.onload = function() {
                 try {
-                    const ext = file.name.split('.').pop().toLowerCase();
-                    let layer;
+                    const geojson = JSON.parse(reader.result);
+                    const layer = L.geoJSON(geojson);
                     const color = `#${Math.floor(Math.random()*16777215).toString(16)}`;
-
-                    if (ext === 'kml') {
-                        layer = omnivore.kml.parse(reader.result);
-                    } else {
-                        const geojson = JSON.parse(reader.result);
-                        layer = L.geoJSON(geojson);
-                    }
-
-                    layer.on('ready', () => {
-                        addLayer(layer, file.name, color);
-                    });
+                    
+                    addLayer(layer, file.name, color);
                 } catch (error) {
-                    alert('Error al cargar el archivo');
+                    alert('Error al cargar GeoJSON');
                     console.error(error);
                 }
             };
@@ -162,7 +178,29 @@
             reader.readAsText(file);
         });
 
-        // Función para eliminar capas
+        // Carga de KML
+        document.getElementById('kmlInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function() {
+                try {
+                    const layer = omnivore.kml.parse(reader.result);
+                    const color = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+                    
+                    layer.on('ready', () => {
+                        addLayer(layer, file.name, color);
+                    });
+                } catch (error) {
+                    alert('Error al cargar KML');
+                    console.error(error);
+                }
+            };
+
+            reader.readAsText(file);
+        });
+
+        // Eliminar capa
         function removeLayer(layerId) {
             map.removeLayer(layers[layerId]);
             delete layers[layerId];
