@@ -6,63 +6,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <style>
-        /* ... [Mantén los estilos anteriores] ... */
+        html, body, #map {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
         
-        /* Nuevo contenedor de herramientas */
-        #toolbar {
+        /* Mejoras en controles */
+        #title {
             position: absolute;
             top: 1rem;
-            left: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
             background: rgba(255,255,255,0.9);
-            padding: 1rem;
-            border-radius: 8px;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        #search-container {
+            position: absolute;
+            top: 1.2rem;
+            right: 1rem;
+            z-index: 1000;
+            background: rgba(255,255,255,0.9);
+            padding: 0.5rem;
+            border-radius: 25px;
+            display: flex;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .tool-section {
-            margin-bottom: 1rem;
+        #search-input {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 25px;
+            margin-right: 0.5rem;
         }
 
-        .tool-section h4 {
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-            color: #2c3e50;
+        .leaflet-control-geosearch {
+            flex: 1;
         }
 
-        .file-input {
-            margin-bottom: 1rem;
+        /* Mejoras en leyenda */
+        #legend {
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            line-height: 1.8;
         }
 
-        .layer-list {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .layer-item {
+        .legend-item {
             display: flex;
             align-items: center;
-            margin-bottom: 0.5rem;
         }
 
-        .layer-color {
+        .legend-color {
             width: 18px;
             height: 18px;
             margin-right: 8px;
-            border-radius: 3px;
+            border-radius: 50%;
             flex-shrink: 0;
         }
 
-        .analysis-tool {
-            margin-bottom: 1rem;
+        /* Mejoras en popups */
+        .leaflet-popup-content {
+            font-size: 14px;
+            line-height: 1.4;
         }
 
-        .analysis-tool select {
-            width: 100%;
-            padding: 0.3rem;
-            margin: 0.3rem 0;
+        /* Responsive design */
+        @media (max-width: 768px) {
+            #title {
+                font-size: 1rem;
+                padding: 0.5rem 1rem;
+            }
+            
+            #search-container {
+                top: 0.5rem;
+                right: 0.5rem;
+                padding: 0.3rem;
+            }
+            
+            #search-input {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -70,204 +102,119 @@
     <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
     <div id="map"></div>
     
-    <!-- Barra de herramientas -->
-    <div id="toolbar">
-        <div class="tool-section">
-            <h4>Cargar Datos</h4>
-            <input type="file" id="fileInput" class="file-input" accept=".geojson,.json,.kml">
-        </div>
-        
-        <div class="tool-section">
-            <h4>Capas Cargadas</h4>
-            <ul id="layerList" class="layer-list"></ul>
-        </div>
-        
-        <div class="tool-section analysis-tool">
-            <h4>Herramientas de Análisis</h4>
-            <select id="bufferLayer">
-                <option value="">Seleccionar capa para buffer</option>
-            </select>
-            <input type="number" id="bufferDistance" placeholder="Radio (metros)">
-            <button onclick="createBuffer()">Crear Buffer</button>
-        </div>
-        
-        <div class="tool-section analysis-tool">
-            <select id="intersectLayer1">
-                <option value="">Capa 1</option>
-            </select>
-            <select id="intersectLayer2">
-                <option value="">Capa 2</option>
-            </select>
-            <button onclick="checkIntersection()">Ver Intersección</button>
-        </div>
-    </div>
-
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/geosearch.umd.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <script src="https://npmcdn.com/@turf/turf@6/turf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ omnivore/0.3.4/leaflet-omnivore.min.js"></script>
 
     <script>
+        // Configuración inicial del mapa
         const map = L.map('map', {
             center: [1.795, -78.825],
-            zoom: 10
+            zoom: 10,
+            layers: []
         });
 
         // Capas base
-        const googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Google Maps'
-        }).addTo(map);
-
-        const esriSatellite = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Esri'
-        });
-
-        // Control de capas
         const baseLayers = {
-            "Google Streets": googleStreets,
-            "Satélite Esri": esriSatellite
+            "Google Streets": L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: 'Google Maps'
+            }),
+            "Satélite Esri": L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }).addTo(map)
         };
 
-        const overlayLayers = {};
-        const userLayers = {};
-        let currentLayerId = 0;
+        // Capas de información
+        const overlayLayers = {
+            "Cabo Manglar": createGeoJSONLayer('red'),
+            "Consejo Las Varas": createGeoJSONLayer('blue'),
+            "Cor Mangle": createGeoJSONLayer('green'),
+            "Mangle Consejo": createGeoJSONLayer('purple'),
+            "Tumaco": createGeoJSONLayer('orange'),
+            "Constricciones": createGeoJSONLayer('brown')
+        };
 
-        L.control.layers(baseLayers, overlayLayers).addTo(map);
+        // Control de capas
+        L.control.layers(baseLayers, overlayLayers, { collapsed: false }).addTo(map);
+        L.control.attribution({ prefix: 'Elaborado por Diego Castaño' }).addTo(map);
 
-        // Función para añadir capa al mapa
-        function addLayerToMap(layer, name, color) {
-            const layerId = `userLayer_${currentLayerId++}`;
-            userLayers[layerId] = layer;
-            
-            // Añadir a controles de capas
-            overlayLayers[name] = layer;
-            layer.addTo(map);
-            
-            // Actualizar lista de capas
-            const layerItem = document.createElement('li');
-            layerItem.className = 'layer-item';
-            layerItem.innerHTML = `
-                <div class="layer-color" style="background-color: ${color}"></div>
-                <span>${name}</span>
-                <button onclick="removeLayer('${layerId}')">×</button>
-                <button onclick="moveLayerUp('${layerId}')">▲</button>
-                <button onclick="moveLayerDown('${layerId}')">▼</button>
-            `;
-            document.getElementById('layerList').appendChild(layerItem);
-        }
-
-        // Carga de archivos
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function() {
-                try {
-                    const format = file.name.split('.').pop().toLowerCase();
-                    let layer;
+        // Función para crear capas GeoJSON
+        function createGeoJSONLayer(color) {
+            return L.geoJSON(null, {
+                style: { color: color },
+                onEachFeature: (feature, layer) => {
+                    layer.bindPopup(`<b>${feature.properties.name}</b>`);
                     
-                    if (format === 'kml') {
-                        layer = omnivore.kml.parse(reader.result);
-                    } else {
-                        const geojson = JSON.parse(reader.result);
-                        layer = L.geoJSON(geojson);
-                    }
-
-                    const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
-                    const layerName = file.name.split('.')[0];
-                    
-                    layer.setStyle({ color: randomColor });
-                    addLayerToMap(layer, layerName, randomColor);
-                    
-                } catch (error) {
-                    alert('Error al cargar el archivo');
-                    console.error(error);
+                    layer.on({
+                        mouseover: (e) => {
+                            e.target.setStyle({ weight: 3, fillOpacity: 0.6 });
+                        },
+                        mouseout: (e) => {
+                            e.target.setStyle({ weight: 2, fillOpacity: 0.5 });
+                        },
+                        click: (e) => map.fitBounds(e.target.getBounds())
+                    });
                 }
-            };
-
-            if (file) {
-                reader.readAsText(file);
-            }
-        });
-
-        // Funciones de gestión de capas
-        function removeLayer(layerId) {
-            const layer = userLayers[layerId];
-            map.removeLayer(layer);
-            delete userLayers[layerId];
-            document.querySelector(`li:has(button[onclick="removeLayer('${layerId}')"])`).remove();
-        }
-
-        function moveLayerUp(layerId) {
-            const layer = userLayers[layerId];
-            layer.bringToFront();
-            updateLayerOrder();
-        }
-
-        function moveLayerDown(layerId) {
-            const layer = userLayers[layerId];
-            layer.bringToBack();
-            updateLayerOrder();
-        }
-
-        function updateLayerOrder() {
-            // Implementación opcional para persistencia de orden
-        }
-
-        // Herramientas de análisis
-        function createBuffer() {
-            const layerId = document.getElementById('bufferLayer').value;
-            const distance = document.getElementById('bufferDistance').value;
-            
-            if (!layerId || !distance) return;
-
-            const layer = userLayers[layerId];
-            const buffered = turf.buffer(layer.toGeoJSON(), distance, {units: 'meters'});
-            
-            L.geoJSON(buffered, {
-                style: { color: '#ff0000', fillColor: '#ff0000' }
-            }).addTo(map);
-        }
-
-        function checkIntersection() {
-            const layer1Id = document.getElementById('intersectLayer1').value;
-            const layer2Id = document.getElementById('intersectLayer2').value;
-            
-            if (!layer1Id || !layer2Id) return;
-
-            const layer1 = userLayers[layer1Id].toGeoJSON();
-            const layer2 = userLayers[layer2Id].toGeoJSON();
-            
-            const intersection = turf.intersect(layer1, layer2);
-            
-            if (intersection) {
-                L.geoJSON(intersection, {
-                    style: { color: '#00ff00', fillColor: '#00ff00' }
-                }).addTo(map);
-            } else {
-                alert('No hay intersección');
-            }
-        }
-
-        // Actualizar opciones de análisis
-        function updateAnalysisOptions() {
-            const layerSelects = document.querySelectorAll('.analysis-tool select');
-            layerSelects.forEach(select => {
-                select.innerHTML = '<option value="">Seleccionar capa</option>';
-                Object.entries(userLayers).forEach(([id, layer]) => {
-                    const option = document.createElement('option');
-                    option.value = id;
-                    option.textContent = layer.options.name || 'Capa sin nombre';
-                    select.appendChild(option);
-                });
             });
         }
 
-        // Llamar al cargar
-        updateAnalysisOptions();
+        // Carga de datos
+        const files = [
+            'Cabo_manglar.geojson',
+            'Consejo_las_varas.geojson',
+            'Cor_mangle.geojson',
+            'Mangle_consejo.geojson',
+            'Tumaco.geojson',
+            'constricciones.geojson'
+        ];
+
+        files.forEach((file, index) => {
+            fetch(file)
+                .then(response => response.json())
+                .then(data => {
+                    const layer = overlayLayers[Object.keys(overlayLayers)[index]];
+                    layer.addData(data);
+                })
+                .catch(error => console.error(`Error cargando ${file}:`, error));
+        });
+
+        // Control de búsqueda
+        const searchControl = new GeoSearch.GeoSearchControl({
+            provider: new GeoSearch.OpenStreetMapProvider(),
+            style: 'button',
+            showMarker: true,
+            marker: {
+                icon: L.icon({
+                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+                })
+            },
+            autoClose: true,
+            keepResult: true
+        });
+
+        map.addControl(searchControl);
+
+        // Leyenda
+        const legend = L.control({ position: 'bottomleft' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = '<h4>Leyenda</h4>';
+            
+            Object.entries(overlayLayers).forEach(([name, layer]) => {
+                const color = layer.options.style.color;
+                div.innerHTML += `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${color}"></div>
+                        ${name}
+                    </div>
+                `;
+            });
+            
+            return div;
+        };
+        legend.addTo(map);
     </script>
 </body>
 </html>
