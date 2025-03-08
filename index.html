@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Geoportal Tumaco - Diego Castaño SIG</title>
+    <title>Geoportal Interactivo - Tumaco</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -14,92 +14,64 @@
             margin: 0;
             font-family: Arial, sans-serif;
         }
-        
-        #title {
+
+        #credits {
             position: absolute;
-            top: 1rem;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 10px;
+            right: 10px;
             z-index: 1000;
             background: rgba(255,255,255,0.9);
-            padding: 1rem 2rem;
-            border-radius: 25px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            font-size: 1.5rem;
-            font-weight: 600;
+            padding: 8px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+            text-align: right;
         }
 
         #toolbar {
             position: absolute;
             top: 1rem;
-            right: 1rem;
+            left: 1rem;
             z-index: 1000;
             background: rgba(255,255,255,0.9);
             padding: 1rem;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 300px;
+            width: 300px;
         }
 
         .file-input {
             margin-bottom: 1rem;
         }
 
-        .layer-list {
-            list-style: none;
-            padding-left: 0;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
         .layer-item {
             display: flex;
             align-items: center;
-            padding: 0.5rem;
-            margin-bottom: 0.3rem;
-            background: #f5f5f5;
-            border-radius: 4px;
+            margin: 5px 0;
         }
 
         .layer-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
             border-radius: 3px;
-            flex-shrink: 0;
-        }
-
-        #attribution {
-            position: absolute;
-            bottom: 1rem;
-            right: 1rem;
-            z-index: 1000;
-            background: rgba(255,255,255,0.9);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            color: #666;
         }
     </style>
 </head>
 <body>
-    <div id="title">Geoportal Tumaco</div>
     <div id="map"></div>
     
-    <div id="toolbar">
-        <div class="tool-section">
-            <h4>Cargar Datos Geográficos</h4>
-            <input type="file" id="fileInput" class="file-input" accept=".geojson,.json,.kml">
-        </div>
-        
-        <div class="tool-section">
-            <h4>Capas Cargadas</h4>
-            <ul id="layerList" class="layer-list"></ul>
-        </div>
+    <div id="credits">
+        Elaborado por:<br>
+        Diego Castaño, Esp. SIG
     </div>
 
-    <div id="attribution">
-        Elaborado por: Diego Castaño, Esp. SIG
+    <div id="toolbar">
+        <h3>Cargar Datos</h3>
+        <input type="file" id="fileInput" accept=".geojson,.json,.kml">
+        
+        <h4>Capas Cargadas</h4>
+        <div id="layerList"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -109,112 +81,93 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/omnivore/0.3.4/leaflet-omnivore.min.js"></script>
 
     <script>
-        const map = L.map('map', {
-            center: [1.8073, -78.8208],
-            zoom: 12
-        });
+        const map = L.map('map').setView([1.795, -78.825], 10);
 
-        // Capa base inicial
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
+        // Capas base
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Google Maps'
         }).addTo(map);
 
-        // Control de capas
-        const baseLayers = {
-            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            })
-        };
-
-        const overlayLayers = {};
-        const userLayers = {};
-
-        L.control.layers(baseLayers, overlayLayers).addTo(map);
-
-        // Carga de archivos
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function() {
-                try {
-                    const format = file.name.split('.').pop().toLowerCase();
-                    let layer;
-
-                    if (format === 'kml') {
-                        layer = omnivore.kml.parse(reader.result);
-                    } else {
-                        const geojson = JSON.parse(reader.result);
-                        layer = L.geoJSON(geojson, {
-                            style: {
-                                color: '#' + Math.floor(Math.random()*16777215).toString(16),
-                                weight: 2,
-                                fillOpacity: 0.3
-                            },
-                            onEachFeature: (feature, l) => {
-                                l.bindPopup(`<b>${feature.properties.name || 'Predio'}</b>`);
-                            }
-                        });
-                    }
-
-                    const layerName = file.name.split('.')[0];
-                    layer.name = layerName;
-                    userLayers[layerName] = layer;
-
-                    // Añadir al mapa y controles
-                    layer.addTo(map);
-                    overlayLayers[layerName] = layer;
-                    updateLayerControl();
-
-                    // Añadir a lista visual
-                    const listItem = document.createElement('li');
-                    listItem.className = 'layer-item';
-                    listItem.innerHTML = `
-                        <div class="layer-color" style="background-color: ${layer.options.color}"></div>
-                        ${layerName}
-                        <button onclick="removeLayer('${layerName}')" style="margin-left:auto">Eliminar</button>
-                    `;
-                    document.getElementById('layerList').appendChild(listItem);
-                    
-                } catch (error) {
-                    alert('Error al procesar el archivo: ' + error.message);
-                    console.error(error);
-                }
-            };
-            reader.readAsText(file);
-        });
-
-        // Funciones de gestión
-        function updateLayerControl() {
-            map.eachLayer(layer => {
-                if (layer instanceof L.GeoJSON || layer instanceof L.KML) {
-                    if (!overlayLayers[layer.name]) {
-                        overlayLayers[layer.name] = layer;
-                    }
-                }
-            });
-            L.control.layers(baseLayers, overlayLayers).addTo(map);
-        }
-
-        function removeLayer(name) {
-            map.removeLayer(userLayers[name]);
-            delete userLayers[name];
-            delete overlayLayers[name];
-            document.querySelector(`li:contains(${name})`).remove();
-            updateLayerControl();
-        }
-
-        // Búsqueda geográfica
+        // Control de búsqueda
         const searchControl = new GeoSearch.GeoSearchControl({
             provider: new GeoSearch.OpenStreetMapProvider(),
             style: 'button',
             showMarker: true,
-            autoClose: true
         });
         map.addControl(searchControl);
+
+        // Variables globales
+        let layerCounter = 0;
+        const layers = {};
+
+        // Función para agregar capas
+        function addLayer(layer, name, color) {
+            const layerId = `layer_${layerCounter++}`;
+            layers[layerId] = layer;
+            
+            // Estilos según tipo de geometría
+            layer.setStyle({
+                color: color,
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.3
+            });
+
+            // Agregar al mapa
+            layer.addTo(map).bringToFront();
+            
+            // Crear elemento en lista
+            const layerElement = document.createElement('div');
+            layerElement.className = 'layer-item';
+            layerElement.innerHTML = `
+                <div class="layer-color" style="background-color: ${color}"></div>
+                ${name}
+                <button onclick="removeLayer('${layerId}')">×</button>
+            `;
+            document.getElementById('layerList').appendChild(layerElement);
+            
+            // Ajustar vista al cargar
+            map.fitBounds(layer.getBounds());
+        }
+
+        // Carga de archivos
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function() {
+                try {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    let layer;
+                    const color = `#${Math.floor(Math.random()*16777215).toString(16)}`;
+
+                    if (ext === 'kml') {
+                        layer = omnivore.kml.parse(reader.result);
+                    } else {
+                        const geojson = JSON.parse(reader.result);
+                        layer = L.geoJSON(geojson);
+                    }
+
+                    layer.on('ready', () => {
+                        addLayer(layer, file.name, color);
+                    });
+                } catch (error) {
+                    alert('Error al cargar el archivo');
+                    console.error(error);
+                }
+            };
+
+            reader.readAsText(file);
+        });
+
+        // Función para eliminar capas
+        function removeLayer(layerId) {
+            map.removeLayer(layers[layerId]);
+            delete layers[layerId];
+            document.querySelector(`div[layerId="${layerId}"]`).remove();
+        }
     </script>
 </body>
 </html>
