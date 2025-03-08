@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <style>
         html, body, #map {
             height: 100%;
@@ -15,9 +16,9 @@
             bottom: 0;
             left: 0;
             padding: 0 5px;
-            font-size: 14px;
-            background: rgba(255,255,255,0.8);
-            font-weight: bold;
+            font-size: 14px; /* Aumenta el tamaño de la fuente */
+            background: rgba(255,255,255,0.8); /* Ajusta la transparencia */
+            font-weight: bold; /* Hace que el texto sea negrita */
         }
         #title {
             position: absolute;
@@ -26,36 +27,14 @@
             z-index: 401;
             background: rgba(255,255,255,0.7);
             padding: 5px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        #legend {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            z-index: 401;
-            background: rgba(255,255,255,0.8);
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 5px;
-            border-radius: 50%;
+            font-size: 18px; /* Aumenta el tamaño de la fuente */
+            font-weight: bold; /* Hace que el texto sea negrita */
         }
     </style>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
 <body>
     <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
     <div id="map"></div>
-    <div id="legend"></div>
 
     <script>
         var map = L.map('map').setView([1.795, -78.825], 10);
@@ -70,51 +49,104 @@
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         });
 
-        var caboManglar = L.geoJSON(null, { style: { color: 'red' }, onEachFeature: onEachFeature });
-        var consejoLasVaras = L.geoJSON(null, { style: { color: 'blue' }, onEachFeature: onEachFeature });
-        var corMangle = L.geoJSON(null, { style: { color: 'green' }, onEachFeature: onEachFeature });
-        var mangleConsejo = L.geoJSON(null, { style: { color: 'purple' }, onEachFeature: onEachFeature });
-        var tumaco = L.geoJSON(null, { style: { color: 'orange' }, onEachFeature: onEachFeature }).addTo(map);
-        var constricciones = L.geoJSON(null, { style: { color: 'brown' }, onEachFeature: onEachFeature });
+        var caboManglar = L.geoJSON(null, { 
+            style: { color: 'red' },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
+                    alert('Cabo Manglar');
+                });
+            }
+        });
+        var consejoLasVaras = L.geoJSON(null, { 
+            style: { color: 'blue' },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
+                    alert('Consejo Las Varas');
+                });
+            }
+        });
+        var corMangle = L.geoJSON(null, { 
+            style: { color: 'green' },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
+                    alert('Cor Mangle');
+                });
+            }
+        });
+        var mangleConsejo = L.geoJSON(null, { 
+            style: { color: 'purple' },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
+                    alert('Mangle Consejo');
+                });
+            }
+        });
+        var tumaco = L.geoJSON(null, { 
+            style: { color: 'orange' },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
+                    alert('Tumaco');
+                });
+            }
+        }).addTo(map);
+        var constricciones = L.geoJSON(null, { 
+            style: { color: 'brown' },
+            onEachFeature: function (feature, layer) {
+                layer.on('click', function (e) {
+                    map.fitBounds(e.target.getBounds());
+                    alert('Constricciones');
+                });
+            }
+        });
 
-        function onEachFeature(feature, layer) {
-            layer.on('click', function (e) {
-                map.fitBounds(e.target.getBounds());
-                var popupContent = '<b>' + layer.feature.properties.name + '</b>'; // Reemplaza 'name' con el atributo correcto
-                layer.bindPopup(popupContent).openPopup();
-            });
-        }
+        fetch('Cabo_manglar.geojson')
+            .then(response => response.json())
+            .then(data => caboManglar.addData(data));
 
-        fetch('Cabo_manglar.geojson').then(response => response.json()).then(data => caboManglar.addData(data));
-        fetch('Consejo_las_varas.geojson').then(response => response.json()).then(data => consejoLasVaras.addData(data));
-        fetch('Cor_mangle.geojson').then(response => response.json()).then(data => corMangle.addData(data));
-        fetch('Mangle_consejo.geojson').then(response => response.json()).then(data => mangleConsejo.addData(data));
-        fetch('Tumaco.geojson').then(response => response.json()).then(data => tumaco.addData(data));
-        fetch('constricciones.geojson').then(response => response.json()).then(data => constricciones.addData(data));
+        fetch('Consejo_las_varas.geojson')
+            .then(response => response.json())
+            .then(data => consejoLasVaras.addData(data));
 
-        var baseMaps = { "Google Streets": googleStreets, "Esri Satellite": esriSatellite };
-        var overlayMaps = {
-            "Cabo Manglar": caboManglar, "Consejo Las Varas": consejoLasVaras,
-            "Cor Mangle": corMangle, "Mangle Consejo": mangleConsejo,
-            "Tumaco": tumaco, "Constricciones": constricciones
+        fetch('Cor_mangle.geojson')
+            .then(response => response.json())
+            .then(data => corMangle.addData(data));
+
+        fetch('Mangle_consejo.geojson')
+            .then(response => response.json())
+            .then(data => mangleConsejo.addData(data));
+
+        fetch('Tumaco.geojson')
+            .then(response => response.json())
+            .then(data => tumaco.addData(data));
+
+        fetch('constricciones.geojson')
+            .then(response => response.json())
+            .then(data => constricciones.addData(data));
+
+        var baseMaps = {
+            "Google Streets": googleStreits,
+            "Esri Satellite": esriSatellite
         };
+
+        var overlayMaps = {
+            "Cabo Manglar": caboManglar,
+            "Consejo Las Varas": consejoLasVaras,
+            "Cor Mangle": corMangle,
+            "Mangle Consejo": mangleConsejo,
+            "Tumaco": tumaco,
+            "Constricciones": constricciones
+        };
+
         L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-        L.control.attribution({ prefix: 'Elaborado por Diego Castaño' }).addTo(map);
-
-        // Leyenda
-        var legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function (map) {
-            var div = L.DomUtil.create('div', 'legend');
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: red;"></div>Cabo Manglar</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: blue;"></div>Consejo Las Varas</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: green;"></div>Cor Mangle</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: purple;"></div>Mangle Consejo</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: orange;"></div>Tumaco</div>';
-            div.innerHTML += '<div class="legend-item"><div class="legend-color" style="background-color: brown;"></div>Constricciones</div>';
-            return div;
-        };
-        legend.addTo(map);
+        L.control.attribution({
+            prefix: 'Elaborado por Diego Castaño'
+        }).addTo(map);
     </script>
 </body>
 </html>
