@@ -18,11 +18,12 @@ html, body, #map {
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.95);
     padding: 10px 20px;
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0,0,0,0.2);
     font-size: 1.2em;
+    font-family: Arial, sans-serif;
 }
 .leaflet-control {
     margin-right: 10px;
@@ -35,6 +36,25 @@ html, body, #map {
     cursor: pointer;
     border: 1px solid #ccc;
     font-weight: bold;
+}
+.file-input-container {
+    background: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    margin-top: 5px;
+}
+.coordinates-display {
+    position: fixed;
+    bottom: 30px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    padding: 8px 15px;
+    border-radius: 5px;
+    z-index: 1000;
+    font-family: monospace;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 .legend {
     background: rgba(255,255,255,0.8);
@@ -55,13 +75,15 @@ html, body, #map {
 </style>
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@tmcw/togeojson@4.6.0/dist/togeojson.umd.js"></script>
 </head>
 <body>
 <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
 <div id="map"></div>
+<div class="coordinates-display" id="coordinates"></div>
 
 <script>
-// Configuración inicial
+// Configuración inicial del mapa
 var map = L.map('map').setView([1.795, -78.825], 10);
 
 // Paleta de colores para capas
@@ -72,7 +94,8 @@ var coloresCapas = {
     "Mangle Consejo": '#800080',
     "Tumaco": '#ffa500',
     "Constricciones": '#a52a2a',
-    "Dibujos": '#3388ff'
+    "Dibujos": '#3388ff',
+    "KML Importado": '#FF69B4'
 };
 
 // Capas base
@@ -84,27 +107,15 @@ var baseLayers = {
     "Satélite": L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
 };
 
-// Configuración de capas GeoJSON
+// Capas GeoJSON
 var overlayLayers = {
     "Dibujos": new L.FeatureGroup(),
-    "Cabo Manglar": L.geoJSON(null, {
-        style: { color: coloresCapas["Cabo Manglar"], weight: 2 }
-    }),
-    "Consejo Varas": L.geoJSON(null, {
-        style: { color: coloresCapas["Consejo Varas"], weight: 2 }
-    }),
-    "Cor Mangle": L.geoJSON(null, {
-        style: { color: coloresCapas["Cor Mangle"], weight: 2 }
-    }),
-    "Mangle Consejo": L.geoJSON(null, {
-        style: { color: coloresCapas["Mangle Consejo"], weight: 2 }
-    }),
-    "Tumaco": L.geoJSON(null, {
-        style: { color: coloresCapas["Tumaco"], weight: 2 }
-    }),
-    "Constricciones": L.geoJSON(null, {
-        style: { color: coloresCapas["Constricciones"], weight: 2 }
-    })
+    "Cabo Manglar": L.geoJSON(null, { style: { color: coloresCapas["Cabo Manglar"], weight: 2 } }),
+    "Consejo Varas": L.geoJSON(null, { style: { color: coloresCapas["Consejo Varas"], weight: 2 } }),
+    "Cor Mangle": L.geoJSON(null, { style: { color: coloresCapas["Cor Mangle"], weight: 2 } }),
+    "Mangle Consejo": L.geoJSON(null, { style: { color: coloresCapas["Mangle Consejo"], weight: 2 } }),
+    "Tumaco": L.geoJSON(null, { style: { color: coloresCapas["Tumaco"], weight: 2 } }),
+    "Constricciones": L.geoJSON(null, { style: { color: coloresCapas["Constricciones"], weight: 2 } })
 };
 
 // Cargar datos GeoJSON
@@ -127,7 +138,7 @@ baseLayers["Google Streets"].addTo(map);
 Object.values(overlayLayers).forEach(layer => layer.addTo(map));
 
 // Control de capas
-L.control.layers(baseLayers, overlayLayers, {
+var layerControl = L.control.layers(baseLayers, overlayLayers, {
     collapsed: false
 }).addTo(map);
 
@@ -211,11 +222,65 @@ L.Control.Export = L.Control.extend({
 
 new L.Control.Export({ position: 'topright' }).addTo(map);
 
-// Créditos
-L.control.attribution({
-    position: 'bottomright',
-    prefix: 'Elaborado por: Diego Castaño, Esp. SIG'
-}).addTo(map);
+// Importar KML
+L.Control.FileImport = L.Control.extend({
+    onAdd: function(map) {
+        var container = L.DomUtil.create('div', 'file-input-container');
+        container.innerHTML = '📁 Importar KML';
+        var input = L.DomUtil.create('input', '', container);
+        input.type = 'file';
+        input.accept = '.kml';
+        input.style.display = 'none';
+        
+        L.DomEvent.on(input, 'change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var kml = toGeoJSON.kml(new DOMParser().parseFromString(e.target.result, 'text/xml'));
+                        var newLayer = L.geoJSON(kml, {
+                            style: { color: coloresCapas["KML Importado"], weight: 2 }
+                        }).addTo(map);
+                        
+                        overlayLayers[file.name] = newLayer;
+                        layerControl.addOverlay(newLayer, file.name);
+                    } catch (error) {
+                        alert('Error al cargar el KML: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+        
+        L.DomEvent.on(container, 'click', function() {
+            input.click();
+        });
+        
+        return container;
+    }
+});
+new L.Control.FileImport({ position: 'topright' }).addTo(map);
+
+// Captura de coordenadas
+map.on('mousemove', function(e) {
+    document.getElementById('coordinates').innerHTML = 
+        `Lat: ${e.latlng.lat.toFixed(5)}<br>Lon: ${e.latlng.lng.toFixed(5)}`;
+});
+
+map.on('click', function(e) {
+    var coords = e.latlng;
+    var popup = L.popup()
+        .setLatLng(coords)
+        .setContent(`
+            <b>Coordenadas:</b><br>
+            ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}
+            <button onclick="navigator.clipboard.writeText('${coords.lat},${coords.lng}')">
+                Copiar
+            </button>
+        `)
+        .openOn(map);
+});
 
 // Leyenda
 var legend = L.control({ position: 'bottomleft' });
@@ -235,6 +300,12 @@ legend.onAdd = function() {
     return div;
 };
 legend.addTo(map);
+
+// Créditos
+L.control.attribution({
+    position: 'bottomright',
+    prefix: 'Elaborado por: Diego Castaño, Esp. SIG'
+}).addTo(map);
 </script>
 </body>
 </html>
