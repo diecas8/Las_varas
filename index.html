@@ -28,7 +28,7 @@ html, body, #map {
 
 #legend {
     position: absolute;
-    bottom: 40px; /* Ajustado para evitar superposición */
+    bottom: 40px;
     left: 10px;
     z-index: 401;
     background: rgba(255,255,255,0.8);
@@ -86,7 +86,7 @@ html, body, #map {
     font-size: 14px;
     background: rgba(255,255,255,0.8);
     font-weight: bold;
-    z-index: 500; /* Aumentado para asegurar visibilidad */
+    z-index: 500;
 }
 </style>
 </head>
@@ -108,16 +108,14 @@ html, body, #map {
 <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 
 <script>
-var map = L.map('map', {
-    layers: [] // Capas base inicialmente vacías
-}).setView([1.795, -78.825], 10);
+var map = L.map('map').setView([1.795, -78.825], 10);
 
 // Capas base
 var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
     maxZoom: 20,
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
     attribution: 'Map data &copy; <a href="https://www.google.com/maps/">Google Maps</a>'
-});
+}).addTo(map);
 
 var esriSatellite = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
@@ -143,10 +141,11 @@ var baseMaps = {
     "Esri Satellite": esriSatellite
 };
 
-var overlayMaps = {
-    ...capas,
-    "Elementos dibujados": drawnItems
-};
+var overlayMaps = {};
+Object.entries(capas).forEach(([nombre, capa]) => {
+    overlayMaps[nombre] = capa;
+});
+overlayMaps["Elementos dibujados"] = drawnItems;
 
 // Agregar control de capas
 L.control.layers(baseMaps, overlayMaps).addTo(map);
@@ -171,14 +170,14 @@ L.control.locate({
 }).addTo(map);
 
 // Carga de GeoJSONs existentes
-Object.keys(capas).forEach(nombre => {
+Object.entries(capas).forEach(([nombre, capa]) => {
     fetch(nombre.replace(/ /g, '_').toLowerCase() + '.geojson')
         .then(response => response.json())
         .then(data => {
-            capas[nombre].addData(data);
-            // Agregar capa al mapa si no está vacía
-            if (capas[nombre].getLayers().length > 0) {
-                capas[nombre].addTo(map);
+            capa.addData(data);
+            // Agregar al mapa si no está vacío
+            if (capa.getLayers().length > 0) {
+                capa.addTo(map);
             }
         });
 });
@@ -297,9 +296,6 @@ L.control.attribution({
     prefix: 'Elaborado por Diego Castaño, Esp. SIG',
     position: 'bottomleft'
 }).addTo(map);
-
-// Mostrar capa de Tumaco por defecto
-capas["Tumaco"].addTo(map);
 </script>
 </body>
 </html>
