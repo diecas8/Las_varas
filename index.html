@@ -6,171 +6,300 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.72.0/L.Control.Locate.min.css"/>
 <style>
 html, body, #map {
     height: 100%;
     margin: 0;
     padding: 0;
 }
+
 #title {
     position: absolute;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
-    background: rgba(255,255,255,0.9);
-    padding: 10px 20px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    font-size: 1.2em;
-}
-.leaflet-control {
-    margin-right: 10px;
-    margin-bottom: 10px;
-}
-.export-btn {
-    background: white;
+    z-index: 401;
+    background: rgba(255,255,255,0.7);
     padding: 5px;
-    border-radius: 4px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#legend {
+    position: absolute;
+    bottom: 40px; /* Ajustado para evitar superposición */
+    left: 10px;
+    z-index: 401;
+    background: rgba(255,255,255,0.8);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#search-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 401;
+    background: rgba(255,255,255,0.8);
+    padding: 5px;
+    border-radius: 5px;
+}
+
+#export-container {
+    position: absolute;
+    top: 10px;
+    right: 180px;
+    z-index: 401;
+    background: rgba(255,255,255,0.8);
+    padding: 5px;
+    border-radius: 5px;
+}
+
+#export-btn {
+    padding: 5px 10px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
     cursor: pointer;
 }
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border-radius: 50%;
+}
+
+.leaflet-control-attribution {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 0 5px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.8);
+    font-weight: bold;
+    z-index: 500; /* Aumentado para asegurar visibilidad */
+}
 </style>
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 </head>
 <body>
 <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
 <div id="map"></div>
+<div id="legend"></div>
+<div id="search-container">
+    <input type="text" id="search-input" placeholder="Buscar...">
+</div>
+<div id="export-container">
+    <button id="export-btn">Exportar GeoJSON</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-geosearch@3.0.0/dist/bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.72.0/L.Control.Locate.min.js"></script>
+<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 
 <script>
-// Inicialización del mapa
-var map = L.map('map').setView([1.795, -78.825], 10);
+var map = L.map('map', {
+    layers: [] // Capas base inicialmente vacías
+}).setView([1.795, -78.825], 10);
 
 // Capas base
-var baseLayers = {
-    "Google Streets": L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-        maxZoom: 20,
-        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-    }),
-    "Satélite": L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: 'Map data &copy; <a href="https://www.google.com/maps/">Google Maps</a>'
+});
+
+var esriSatellite = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+});
+
+// Capas existentes
+var capas = {
+    "Cabo Manglar": L.geoJSON(null, { style: { color: 'red' } }),
+    "Consejo Las Varas": L.geoJSON(null, { style: { color: 'blue' } }),
+    "Cor Mangle": L.geoJSON(null, { style: { color: 'green' } }),
+    "Mangle Consejo": L.geoJSON(null, { style: { color: 'purple' } }),
+    "Tumaco": L.geoJSON(null, { style: { color: 'orange' } }),
+    "Constricciones": L.geoJSON(null, { style: { color: 'brown' } })
 };
 
-// Capas GeoJSON
-var overlayLayers = {
-    "Dibujos": new L.FeatureGroup(),
-    "Cabo Manglar": L.geoJSON(),
-    "Consejo Varas": L.geoJSON(),
-    "Cor Mangle": L.geoJSON(),
-    "Mangle Consejo": L.geoJSON(),
-    "Tumaco": L.geoJSON(),
-    "Constricciones": L.geoJSON()
-};
-
-// Cargar capas GeoJSON
-function cargarGeoJSON(layer, url) {
-    fetch(url)
-        .then(response => response.json())
-        .then(data => layer.addData(data))
-        .catch(error => console.error('Error cargando GeoJSON:', error));
-}
-
-cargarGeoJSON(overlayLayers["Cabo Manglar"], 'Cabo_manglar.geojson');
-cargarGeoJSON(overlayLayers["Consejo Varas"], 'Consejo_las_varas.geojson');
-cargarGeoJSON(overlayLayers["Cor Mangle"], 'Cor_mangle.geojson');
-cargarGeoJSON(overlayLayers["Mangle Consejo"], 'Mangle_consejo.geojson');
-cargarGeoJSON(overlayLayers["Tumaco"], 'Tumaco.geojson');
-cargarGeoJSON(overlayLayers["Constricciones"], 'constricciones.geojson');
-
-// Añadir capas al mapa
-baseLayers["Google Streets"].addTo(map);
-Object.values(overlayLayers).forEach(layer => layer.addTo(map));
+// Capa para elementos dibujados
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
 
 // Control de capas
-L.control.layers(baseLayers, overlayLayers, {
-    collapsed: false
-}).addTo(map);
+var baseMaps = {
+    "Google Streets": googleStreets,
+    "Esri Satellite": esriSatellite
+};
+
+var overlayMaps = {
+    ...capas,
+    "Elementos dibujados": drawnItems
+};
+
+// Agregar control de capas
+L.control.layers(baseMaps, overlayMaps).addTo(map);
 
 // Control de dibujo
 var drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems },
     draw: {
-        polygon: {
-            allowIntersection: false,
-            showArea: true,
-            metric: true,
-            shapeOptions: { color: '#3388ff' }
-        },
-        circle: false,
+        polygon: { shapeOptions: { color: '#FF0000' } },
+        marker: { icon: new L.Icon.Default() },
+        circlemarker: false,
         rectangle: false,
-        marker: true
-    },
-    edit: { featureGroup: overlayLayers["Dibujos"] }
+        circle: false
+    }
 });
 map.addControl(drawControl);
 
-// Manejar eventos de dibujo
-map.on(L.Draw.Event.CREATED, function(e) {
-    var layer = e.layer;
-    var type = e.layerType;
-    var popupContent = '';
+// Control de geolocalización
+L.control.locate({
+    position: 'topleft',
+    strings: { title: "Mostrar mi ubicación" }
+}).addTo(map);
 
+// Carga de GeoJSONs existentes
+Object.keys(capas).forEach(nombre => {
+    fetch(nombre.replace(/ /g, '_').toLowerCase() + '.geojson')
+        .then(response => response.json())
+        .then(data => {
+            capas[nombre].addData(data);
+            // Agregar capa al mapa si no está vacía
+            if (capas[nombre].getLayers().length > 0) {
+                capas[nombre].addTo(map);
+            }
+        });
+});
+
+// Evento al dibujar
+map.on(L.Draw.Event.CREATED, function(event) {
+    var layer = event.layer;
+    var type = event.layerType;
+    
     if (type === 'marker') {
-        layer.properties = {
-            nombre: prompt('Nombre del punto:') || 'Sin nombre',
-            contacto: prompt('Contacto:') || 'Sin contacto',
-            observaciones: prompt('Observaciones:') || 'Sin observaciones'
-        };
-        popupContent = `<b>${layer.properties.nombre}</b><hr>
-                        Contacto: ${layer.properties.contacto}<br>
-                        Observaciones: ${layer.properties.observaciones}`;
-    }
-
-    if (type === 'polygon') {
-        var area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]) / 10000;
-        layer.properties = {
-            nombre: prompt('Nombre del polígono:') || 'Sin nombre',
-            contacto: prompt('Contacto:') || 'Sin contacto',
-            area: area.toFixed(2) + ' ha',
-            observaciones: prompt('Observaciones:') || 'Sin observaciones'
-        };
-        popupContent = `<b>${layer.properties.nombre}</b><hr>
-                        Área: ${layer.properties.area}<br>
-                        Contacto: ${layer.properties.contacto}<br>
-                        Observaciones: ${layer.properties.observaciones}`;
-    }
-
-    layer.bindPopup(popupContent).openPopup();
-    overlayLayers["Dibujos"].addLayer(layer);
-});
-
-// Exportar a GeoJSON
-L.Control.Export = L.Control.extend({
-    onAdd: function(map) {
-        var container = L.DomUtil.create('div', 'export-btn');
-        container.innerHTML = '⬇ Exportar Dibujos';
-        L.DomEvent.on(container, 'click', this.exportarGeoJSON);
-        return container;
-    },
-
-    exportarGeoJSON: function() {
-        var data = overlayLayers["Dibujos"].toGeoJSON();
-        var blob = new Blob([JSON.stringify(data)], {type: "application/json"});
-        var url = URL.createObjectURL(blob);
+        layer.bindPopup(`
+            <form id="form-${L.stamp(layer)}">
+                Nombre: <input type="text" id="nombre"><br>
+                Observaciones: <textarea id="observaciones"></textarea><br>
+                <input type="submit" value="Guardar">
+            </form>
+        `).openPopup();
         
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'dibujos.geojson';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        layer.on('popupopen', function() {
+            document.getElementById(`form-${L.stamp(layer)}`).onsubmit = function(e) {
+                e.preventDefault();
+                layer.feature.properties = {
+                    nombre: document.getElementById('nombre').value,
+                    observaciones: document.getElementById('observaciones').value
+                };
+                drawnItems.addLayer(layer);
+                layer.closePopup();
+            };
+        });
+    } else if (type === 'polygon') {
+        const area = turf.area(layer.toGeoJSON()) / 10000; // Conversión a hectáreas
+        
+        layer.bindPopup(`
+            <form id="form-${L.stamp(layer)}">
+                Nombre sitio: <input type="text" id="sitio"><br>
+                Contacto: <input type="text" id="contacto"><br>
+                Observaciones: <textarea id="obs"></textarea><br>
+                Área (ha): <input type="text" value="${area.toFixed(2)}" readonly><br>
+                <input type="submit" value="Guardar">
+            </form>
+        `).openPopup();
+        
+        layer.on('popupopen', function() {
+            document.getElementById(`form-${L.stamp(layer)}`).onsubmit = function(e) {
+                e.preventDefault();
+                layer.feature.properties = {
+                    nombre_sitio: document.getElementById('sitio').value,
+                    contacto: document.getElementById('contacto').value,
+                    observaciones: document.getElementById('obs').value,
+                    area_has: area.toFixed(2)
+                };
+                drawnItems.addLayer(layer);
+                layer.closePopup();
+            };
+        });
     }
 });
 
-new L.Control.Export({ position: 'topright' }).addTo(map);
+// Función para exportar a GeoJSON
+function exportToGeoJSON() {
+    if (drawnItems.getLayers().length === 0) {
+        alert('No hay elementos dibujados para exportar');
+        return;
+    }
+    
+    const features = drawnItems.getLayers().map(layer => {
+        const feature = layer.toGeoJSON();
+        feature.properties = layer.feature.properties || {};
+        return feature;
+    });
+    
+    const geojson = {
+        type: 'FeatureCollection',
+        features: features
+    };
+    
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'datos_exportados.geojson';
+    link.click();
+    URL.revokeObjectURL(url);
+}
 
-// Resto de controles (GPS y créditos)
-// ... (mantener los controles de GPS y créditos del código anterior)
+// Botón de exportar
+document.getElementById('export-btn').addEventListener('click', exportToGeoJSON);
+
+// Leyenda
+var legend = L.control({ position: 'bottomleft' });
+legend.onAdd = function() {
+    var div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = `
+        <div class="legend-item"><div class="legend-color" style="background: red"></div>Cabo Manglar</div>
+        <div class="legend-item"><div class="legend-color" style="background: blue"></div>Consejo Las Varas</div>
+        <div class="legend-item"><div class="legend-color" style="background: green"></div>Cor Mangle</div>
+        <div class="legend-item"><div class="legend-color" style="background: purple"></div>Mangle Consejo</div>
+        <div class="legend-item"><div class="legend-color" style="background: orange"></div>Tumaco</div>
+        <div class="legend-item"><div class="legend-color" style="background: brown"></div>Constricciones</div>
+        <div class="legend-item"><div class="legend-color" style="background: #FF0000"></div>Elementos dibujados</div>
+    `;
+    return div;
+};
+legend.addTo(map);
+
+// Búsqueda
+var searchControl = new L.Control.GeoSearch({
+    provider: new L.GeoSearch.OpenStreetMapProvider(),
+    showMarker: true,
+    autoClose: true
+});
+map.addControl(searchControl);
+
+// Créditos
+L.control.attribution({ 
+    prefix: 'Elaborado por Diego Castaño, Esp. SIG',
+    position: 'bottomleft'
+}).addTo(map);
+
+// Mostrar capa de Tumaco por defecto
+capas["Tumaco"].addTo(map);
 </script>
 </body>
 </html>
