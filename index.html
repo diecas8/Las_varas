@@ -9,79 +9,84 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.72.0/L.Control.Locate.min.css"/>
 <style>
 html, body, #map {
-height: 100%;
-margin: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
-.leaflet-control-attribution {
-position: absolute;
-bottom: 0;
-left: 0;
-padding: 0 5px;
-font-size: 14px;
-background: rgba(255,255,255,0.8);
-font-weight: bold;
-}
+
 #title {
-position: absolute;
-top: 10px;
-left: 50%;
-transform: translateX(-50%);
-z-index: 401;
-background: rgba(255,255,255,0.7);
-padding: 5px;
-font-size: 18px;
-font-weight: bold;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 401;
+    background: rgba(255,255,255,0.7);
+    padding: 5px;
+    font-size: 18px;
+    font-weight: bold;
 }
+
 #legend {
-position: absolute;
-bottom: 10px;
-left: 10px;
-z-index: 401;
-background: rgba(255,255,255,0.8);
-padding: 10px;
-border-radius: 5px;
+    position: absolute;
+    bottom: 40px; /* Ajustado para evitar superposición */
+    left: 10px;
+    z-index: 401;
+    background: rgba(255,255,255,0.8);
+    padding: 10px;
+    border-radius: 5px;
 }
-.legend-item {
-display: flex;
-align-items: center;
-margin-bottom: 5px;
-}
-.legend-color {
-width: 20px;
-height: 20px;
-margin-right: 5px;
-border-radius: 50%;
-}
+
 #search-container {
-position: absolute;
-top: 10px;
-right: 10px;
-z-index: 401;
-background: rgba(255,255,255,0.8);
-padding: 5px;
-border-radius: 5px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 401;
+    background: rgba(255,255,255,0.8);
+    padding: 5px;
+    border-radius: 5px;
 }
+
 #export-container {
-position: absolute;
-top: 10px;
-right: 180px;
-z-index: 401;
-background: rgba(255,255,255,0.8);
-padding: 5px;
-border-radius: 5px;
+    position: absolute;
+    top: 10px;
+    right: 180px;
+    z-index: 401;
+    background: rgba(255,255,255,0.8);
+    padding: 5px;
+    border-radius: 5px;
 }
+
 #export-btn {
-padding: 5px 10px;
-background: #4CAF50;
-color: white;
-border: none;
-border-radius: 3px;
-cursor: pointer;
+    padding: 5px 10px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
 }
-/* Ajuste para créditos */
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border-radius: 50%;
+}
+
 .leaflet-control-attribution {
-  background: transparent !important;
-  font-size: 12px !important;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 0 5px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.8);
+    font-weight: bold;
+    z-index: 500; /* Aumentado para asegurar visibilidad */
 }
 </style>
 </head>
@@ -90,10 +95,10 @@ cursor: pointer;
 <div id="map"></div>
 <div id="legend"></div>
 <div id="search-container">
-<input type="text" id="search-input" placeholder="Buscar...">
+    <input type="text" id="search-input" placeholder="Buscar...">
 </div>
 <div id="export-container">
-<button id="export-btn">Exportar GeoJSON</button>
+    <button id="export-btn">Exportar GeoJSON</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -104,71 +109,197 @@ cursor: pointer;
 
 <script>
 var map = L.map('map', {
-  layers: [] // Iniciamos sin capas base
+    layers: [] // Capas base inicialmente vacías
 }).setView([1.795, -78.825], 10);
 
 // Capas base
 var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-  maxZoom: 20,
-  subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-  attribution: 'Map data &copy; <a href="https://www.google.com/maps/">Google Maps</a>'
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: 'Map data &copy; <a href="https://www.google.com/maps/">Google Maps</a>'
 });
 
 var esriSatellite = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
 });
 
 // Capas existentes
 var capas = {
-  "Cabo Manglar": L.geoJSON(null, { style: { color: 'red' } }),
-  "Consejo Las Varas": L.geoJSON(null, { style: { color: 'blue' } }),
-  "Cor Mangle": L.geoJSON(null, { style: { color: 'green' } }),
-  "Mangle Consejo": L.geoJSON(null, { style: { color: 'purple' } }),
-  "Tumaco": L.geoJSON(null, { style: { color: 'orange' } }),
-  "Constricciones": L.geoJSON(null, { style: { color: 'brown' } })
+    "Cabo Manglar": L.geoJSON(null, { style: { color: 'red' } }),
+    "Consejo Las Varas": L.geoJSON(null, { style: { color: 'blue' } }),
+    "Cor Mangle": L.geoJSON(null, { style: { color: 'green' } }),
+    "Mangle Consejo": L.geoJSON(null, { style: { color: 'purple' } }),
+    "Tumaco": L.geoJSON(null, { style: { color: 'orange' } }),
+    "Constricciones": L.geoJSON(null, { style: { color: 'brown' } })
 };
-
-// Cargamos las capas existentes
-Object.keys(capas).forEach(nombre => {
-  fetch(nombre.replace(/ /g, '_').toLowerCase() + '.geojson')
-    .then(response => response.json())
-    .then(data => {
-      capas[nombre].addData(data);
-      // Agregamos la capa al mapa solo si hay datos
-      if(data.features.length > 0) {
-        capas[nombre].addTo(map);
-      }
-    });
-});
 
 // Capa para elementos dibujados
 var drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
 // Control de capas
-L.control.layers({
-  "Google Streets": googleStreets,
-  "Esri Satellite": esriSatellite
-}, {
-  ...capas,
-  "Elementos dibujados": drawnItems
-}, { collapsed: false }).addTo(map);
+var baseMaps = {
+    "Google Streets": googleStreets,
+    "Esri Satellite": esriSatellite
+};
 
-// Resto del código (geolocalización, dibujo, exportación, etc.)
-// ... [El resto del código JavaScript permanece igual] ...
+var overlayMaps = {
+    ...capas,
+    "Elementos dibujados": drawnItems
+};
 
-// Créditos (agregado al final para asegurar prioridad)
-L.control.attribution({ 
-  prefix: '<a href="https://github.com/DiegoCastanoSIG" target="_blank">Elaborado por Diego Castaño, Esp. SIG</a>',
-  position: 'bottomright'
+// Agregar control de capas
+L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+// Control de dibujo
+var drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems },
+    draw: {
+        polygon: { shapeOptions: { color: '#FF0000' } },
+        marker: { icon: new L.Icon.Default() },
+        circlemarker: false,
+        rectangle: false,
+        circle: false
+    }
+});
+map.addControl(drawControl);
+
+// Control de geolocalización
+L.control.locate({
+    position: 'topleft',
+    strings: { title: "Mostrar mi ubicación" }
 }).addTo(map);
 
-// Aseguramos que el control de capas no tape los créditos
-map.on('overlayadd', function(e) {
-  if(e.name === 'Elementos dibujados') {
-    drawnItems.eachLayer(layer => map.addLayer(layer));
-  }
+// Carga de GeoJSONs existentes
+Object.keys(capas).forEach(nombre => {
+    fetch(nombre.replace(/ /g, '_').toLowerCase() + '.geojson')
+        .then(response => response.json())
+        .then(data => {
+            capas[nombre].addData(data);
+            // Agregar capa al mapa si no está vacía
+            if (capas[nombre].getLayers().length > 0) {
+                capas[nombre].addTo(map);
+            }
+        });
 });
+
+// Evento al dibujar
+map.on(L.Draw.Event.CREATED, function(event) {
+    var layer = event.layer;
+    var type = event.layerType;
+    
+    if (type === 'marker') {
+        layer.bindPopup(`
+            <form id="form-${L.stamp(layer)}">
+                Nombre: <input type="text" id="nombre"><br>
+                Observaciones: <textarea id="observaciones"></textarea><br>
+                <input type="submit" value="Guardar">
+            </form>
+        `).openPopup();
+        
+        layer.on('popupopen', function() {
+            document.getElementById(`form-${L.stamp(layer)}`).onsubmit = function(e) {
+                e.preventDefault();
+                layer.feature.properties = {
+                    nombre: document.getElementById('nombre').value,
+                    observaciones: document.getElementById('observaciones').value
+                };
+                drawnItems.addLayer(layer);
+                layer.closePopup();
+            };
+        });
+    } else if (type === 'polygon') {
+        const area = turf.area(layer.toGeoJSON()) / 10000; // Conversión a hectáreas
+        
+        layer.bindPopup(`
+            <form id="form-${L.stamp(layer)}">
+                Nombre sitio: <input type="text" id="sitio"><br>
+                Contacto: <input type="text" id="contacto"><br>
+                Observaciones: <textarea id="obs"></textarea><br>
+                Área (ha): <input type="text" value="${area.toFixed(2)}" readonly><br>
+                <input type="submit" value="Guardar">
+            </form>
+        `).openPopup();
+        
+        layer.on('popupopen', function() {
+            document.getElementById(`form-${L.stamp(layer)}`).onsubmit = function(e) {
+                e.preventDefault();
+                layer.feature.properties = {
+                    nombre_sitio: document.getElementById('sitio').value,
+                    contacto: document.getElementById('contacto').value,
+                    observaciones: document.getElementById('obs').value,
+                    area_has: area.toFixed(2)
+                };
+                drawnItems.addLayer(layer);
+                layer.closePopup();
+            };
+        });
+    }
+});
+
+// Función para exportar a GeoJSON
+function exportToGeoJSON() {
+    if (drawnItems.getLayers().length === 0) {
+        alert('No hay elementos dibujados para exportar');
+        return;
+    }
+    
+    const features = drawnItems.getLayers().map(layer => {
+        const feature = layer.toGeoJSON();
+        feature.properties = layer.feature.properties || {};
+        return feature;
+    });
+    
+    const geojson = {
+        type: 'FeatureCollection',
+        features: features
+    };
+    
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'datos_exportados.geojson';
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+// Botón de exportar
+document.getElementById('export-btn').addEventListener('click', exportToGeoJSON);
+
+// Leyenda
+var legend = L.control({ position: 'bottomleft' });
+legend.onAdd = function() {
+    var div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = `
+        <div class="legend-item"><div class="legend-color" style="background: red"></div>Cabo Manglar</div>
+        <div class="legend-item"><div class="legend-color" style="background: blue"></div>Consejo Las Varas</div>
+        <div class="legend-item"><div class="legend-color" style="background: green"></div>Cor Mangle</div>
+        <div class="legend-item"><div class="legend-color" style="background: purple"></div>Mangle Consejo</div>
+        <div class="legend-item"><div class="legend-color" style="background: orange"></div>Tumaco</div>
+        <div class="legend-item"><div class="legend-color" style="background: brown"></div>Constricciones</div>
+        <div class="legend-item"><div class="legend-color" style="background: #FF0000"></div>Elementos dibujados</div>
+    `;
+    return div;
+};
+legend.addTo(map);
+
+// Búsqueda
+var searchControl = new L.Control.GeoSearch({
+    provider: new L.GeoSearch.OpenStreetMapProvider(),
+    showMarker: true,
+    autoClose: true
+});
+map.addControl(searchControl);
+
+// Créditos
+L.control.attribution({ 
+    prefix: 'Elaborado por Diego Castaño, Esp. SIG',
+    position: 'bottomleft'
+}).addTo(map);
+
+// Mostrar capa de Tumaco por defecto
+capas["Tumaco"].addTo(map);
 </script>
 </body>
 </html>
