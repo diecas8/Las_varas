@@ -6,240 +6,235 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.72.0/L.Control.Locate.min.css"/>
 <style>
 html, body, #map {
     height: 100%;
     margin: 0;
     padding: 0;
 }
-
 #title {
     position: absolute;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 401;
-    background: rgba(255,255,255,0.7);
-    padding: 5px;
-    font-size: 18px;
+    z-index: 1000;
+    background: rgba(255,255,255,0.9);
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    font-size: 1.2em;
+}
+.leaflet-control {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+.export-btn {
+    background: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #ccc;
     font-weight: bold;
 }
-
-#legend {
-    position: absolute;
-    bottom: 40px;
-    left: 10px;
-    z-index: 401;
+.legend {
     background: rgba(255,255,255,0.8);
     padding: 10px;
     border-radius: 5px;
 }
-
-#search-container {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 401;
-    background: rgba(255,255,255,0.8);
-    padding: 5px;
-    border-radius: 5px;
-}
-
-#export-container {
-    position: absolute;
-    top: 10px;
-    right: 180px;
-    z-index: 401;
-    background: rgba(255,255,255,0.8);
-    padding: 5px;
-    border-radius: 5px;
-}
-
-#export-btn {
-    padding: 5px 10px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
 .legend-item {
     display: flex;
     align-items: center;
-    margin-bottom: 5px;
+    margin: 5px 0;
 }
-
 .legend-color {
     width: 20px;
     height: 20px;
-    margin-right: 5px;
-    border-radius: 50%;
-}
-
-.leaflet-control-attribution {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    padding: 0 5px;
-    font-size: 14px;
-    background: rgba(255,255,255,0.8);
-    font-weight: bold;
-    z-index: 500;
+    margin-right: 8px;
+    border: 2px solid #555;
 }
 </style>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 </head>
 <body>
 <div id="title">CORPORACIÓN BIOCOMERCIO SOSTENIBLE</div>
 <div id="map"></div>
-<div id="legend"></div>
-<div id="search-container">
-    <input type="text" id="search-input" placeholder="Buscar...">
-</div>
-<div id="export-container">
-    <button id="export-btn">Exportar GeoJSON</button>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet-geosearch@3.0.0/dist/geosearch.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.72.0/L.Control.Locate.min.js"></script>
-<script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 
 <script>
+// Configuración inicial
 var map = L.map('map').setView([1.795, -78.825], 10);
 
-// Capas base con HTTPS
-var googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-    maxZoom: 20,
-    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-    attribution: 'Map data &copy; <a href="https://www.google.com/maps/">Google Maps</a>'
-}).addTo(map);
-
-var esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-});
-
-// Capas existentes
-var capas = {
-    "Cabo Manglar": L.geoJSON(null, { style: { color: 'red' } }),
-    "Consejo Las Varas": L.geoJSON(null, { style: { color: 'blue' } }),
-    "Cor Mangle": L.geoJSON(null, { style: { color: 'green' } }),
-    "Mangle Consejo": L.geoJSON(null, { style: { color: 'purple' } }),
-    "Tumaco": L.geoJSON(null, { style: { color: 'orange' } }),
-    "Constricciones": L.geoJSON(null, { style: { color: 'brown' } })
+// Paleta de colores para capas
+var coloresCapas = {
+    "Cabo Manglar": '#ff0000',
+    "Consejo Varas": '#0000ff',
+    "Cor Mangle": '#00ff00',
+    "Mangle Consejo": '#800080',
+    "Tumaco": '#ffa500',
+    "Constricciones": '#a52a2a',
+    "Dibujos": '#3388ff'
 };
 
-// Capa para elementos dibujados
-var drawnItems = new L.FeatureGroup();
-map.addLayer(drawnItems);
+// Capas base
+var baseLayers = {
+    "Google Streets": L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    }),
+    "Satélite": L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}')
+};
+
+// Configuración de capas GeoJSON
+var overlayLayers = {
+    "Dibujos": new L.FeatureGroup(),
+    "Cabo Manglar": L.geoJSON(null, {
+        style: { color: coloresCapas["Cabo Manglar"], weight: 2 }
+    }),
+    "Consejo Varas": L.geoJSON(null, {
+        style: { color: coloresCapas["Consejo Varas"], weight: 2 }
+    }),
+    "Cor Mangle": L.geoJSON(null, {
+        style: { color: coloresCapas["Cor Mangle"], weight: 2 }
+    }),
+    "Mangle Consejo": L.geoJSON(null, {
+        style: { color: coloresCapas["Mangle Consejo"], weight: 2 }
+    }),
+    "Tumaco": L.geoJSON(null, {
+        style: { color: coloresCapas["Tumaco"], weight: 2 }
+    }),
+    "Constricciones": L.geoJSON(null, {
+        style: { color: coloresCapas["Constricciones"], weight: 2 }
+    })
+};
+
+// Cargar datos GeoJSON
+function cargarCapa(nombre, archivo) {
+    fetch(archivo)
+        .then(response => response.json())
+        .then(data => overlayLayers[nombre].addData(data))
+        .catch(error => console.error(`Error cargando ${archivo}:`, error));
+}
+
+cargarCapa("Cabo Manglar", "Cabo_manglar.geojson");
+cargarCapa("Consejo Varas", "Consejo_las_varas.geojson");
+cargarCapa("Cor Mangle", "Cor_mangle.geojson");
+cargarCapa("Mangle Consejo", "Mangle_consejo.geojson");
+cargarCapa("Tumaco", "Tumaco.geojson");
+cargarCapa("Constricciones", "constricciones.geojson");
+
+// Añadir capas al mapa
+baseLayers["Google Streets"].addTo(map);
+Object.values(overlayLayers).forEach(layer => layer.addTo(map));
 
 // Control de capas
-var baseMaps = {
-    "Google Streets": googleStreets,
-    "Esri Satellite": esriSatellite
-};
-
-var overlayMaps = {};
-Object.entries(capas).forEach(([nombre, capa]) => {
-    overlayMaps[nombre] = capa;
-});
-overlayMaps["Elementos dibujados"] = drawnItems;
-
-L.control.layers(baseMaps, overlayMaps).addTo(map);
+L.control.layers(baseLayers, overlayLayers, {
+    collapsed: false
+}).addTo(map);
 
 // Control de dibujo
 var drawControl = new L.Control.Draw({
-    edit: { featureGroup: drawnItems },
     draw: {
-        polygon: { shapeOptions: { color: '#FF0000' } },
-        marker: { icon: new L.Icon.Default() },
-        circlemarker: false,
+        polygon: {
+            allowIntersection: false,
+            showArea: true,
+            metric: true,
+            shapeOptions: { color: coloresCapas["Dibujos"] }
+        },
+        circle: false,
         rectangle: false,
-        circle: false
-    }
+        marker: true
+    },
+    edit: { featureGroup: overlayLayers["Dibujos"] }
 });
 map.addControl(drawControl);
 
-// Control de geolocalización
-L.control.locate({
-    position: 'topleft',
-    strings: { title: "Mostrar mi ubicación" }
-}).addTo(map);
+// Manejar dibujos
+map.on(L.Draw.Event.CREATED, function(e) {
+    var layer = e.layer;
+    var tipo = e.layerType;
+    var propiedades = {};
 
-// Carga de GeoJSONs existentes con validación
-Object.entries(capas).forEach(([nombre, capa]) => {
-    const fileName = nombre.replace(/ /g, '_').toLowerCase() + '.geojson';
-    fetch(fileName)
-        .then(response => {
-            if (!response.ok) {
-                console.error(`Error al cargar ${fileName}: ${response.status}`);
-                return null;
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data) {
-                capa.addData(data);
-                if (capa.getLayers().length > 0) {
-                    capa.addTo(map);
-                }
-            }
-        })
-        .catch(error => console.error(`Error procesando ${fileName}:`, error));
+    if (tipo === 'marker') {
+        propiedades = {
+            nombre: prompt('Nombre del punto:') || 'Sin nombre',
+            contacto: prompt('Contacto:') || 'Sin contacto',
+            observaciones: prompt('Observaciones:') || 'Sin observaciones'
+        };
+    }
+
+    if (tipo === 'polygon') {
+        var area = (L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]) / 10000).toFixed(2);
+        propiedades = {
+            nombre: prompt('Nombre del polígono:') || 'Sin nombre',
+            contacto: prompt('Contacto:') || 'Sin contacto',
+            area: area + ' ha',
+            observaciones: prompt('Observaciones:') || 'Sin observaciones'
+        };
+    }
+
+    layer.feature = layer.feature || {};
+    layer.feature.properties = propiedades;
+    layer.bindPopup(crearPopupContent(propiedades));
+    overlayLayers["Dibujos"].addLayer(layer);
 });
 
-// Configuración de búsqueda con GeoSearch corregida
-const searchControl = new GeoSearch.GeoSearchControl({
-    provider: new GeoSearch.OpenStreetMapProvider(),
-    showMarker: true,
-    autoClose: true,
-    style: 'button',
+function crearPopupContent(propiedades) {
+    return `<b>${propiedades.nombre}</b><hr>
+            ${propiedades.area ? `Área: ${propiedades.area}<br>` : ''}
+            Contacto: ${propiedades.contacto}<br>
+            Observaciones: ${propiedades.observaciones}`;
+}
+
+// Exportar a GeoJSON
+L.Control.Export = L.Control.extend({
+    onAdd: function(map) {
+        var container = L.DomUtil.create('div', 'export-btn');
+        container.innerHTML = '⬇ Exportar Dibujos';
+        L.DomEvent.on(container, 'click', this.exportarGeoJSON);
+        return container;
+    },
+
+    exportarGeoJSON: function() {
+        var data = overlayLayers["Dibujos"].toGeoJSON();
+        var blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+        var url = URL.createObjectURL(blob);
+        
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = `dibujos_${new Date().toISOString().slice(0,10)}.geojson`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 });
-map.addControl(searchControl);
 
-// Resto de funcionalidades (dibujo, exportación, leyenda, etc.)
-// ... (mismo código que en versiones anteriores pero con las correcciones aplicadas)
-
-// Exportación a GeoJSON
-document.getElementById('export-btn').addEventListener('click', () => {
-    const features = drawnItems.getLayers().map(layer => {
-        const feature = layer.toGeoJSON();
-        feature.properties = layer.feature?.properties || {};
-        return feature;
-    });
-    
-    const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', features }, null, 2)], 
-                         { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'datos_exportados.geojson';
-    link.click();
-    URL.revokeObjectURL(url);
-});
-
-// Leyenda
-L.control({ position: 'bottomleft' }).onAdd = function() {
-    const div = L.DomUtil.create('div', 'legend');
-    div.innerHTML = `
-        <div class="legend-item"><div class="legend-color" style="background: red"></div>Cabo Manglar</div>
-        <div class="legend-item"><div class="legend-color" style="background: blue"></div>Consejo Las Varas</div>
-        <div class="legend-item"><div class="legend-color" style="background: green"></div>Cor Mangle</div>
-        <div class="legend-item"><div class="legend-color" style="background: purple"></div>Mangle Consejo</div>
-        <div class="legend-item"><div class="legend-color" style="background: orange"></div>Tumaco</div>
-        <div class="legend-item"><div class="legend-color" style="background: brown"></div>Constricciones</div>
-        <div class="legend-item"><div class="legend-color" style="background: #FF0000"></div>Elementos dibujados</div>
-    `;
-    return div;
-}.addTo(map);
+new L.Control.Export({ position: 'topright' }).addTo(map);
 
 // Créditos
-L.control.attribution({ 
-    prefix: 'Elaborado por Diego Castaño, Esp. SIG',
-    position: 'bottomleft'
+L.control.attribution({
+    position: 'bottomright',
+    prefix: 'Elaborado por: Diego Castaño, Esp. SIG'
 }).addTo(map);
+
+// Leyenda
+var legend = L.control({ position: 'bottomleft' });
+legend.onAdd = function() {
+    var div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = '<h4>Leyenda</h4>';
+    
+    Object.entries(coloresCapas).forEach(([nombre, color]) => {
+        div.innerHTML += `
+            <div class="legend-item">
+                <div class="legend-color" style="background: ${color}"></div>
+                ${nombre}
+            </div>
+        `;
+    });
+    
+    return div;
+};
+legend.addTo(map);
 </script>
 </body>
 </html>
