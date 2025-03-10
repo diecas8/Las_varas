@@ -109,14 +109,14 @@ var baseLayers = {
 
 // Capas GeoJSON
 var overlayLayers = {
+    "Dibujos": new L.FeatureGroup(),
     "Cabo Manglar": L.geoJSON(null, { style: { color: coloresCapas["Cabo Manglar"], weight: 2 } }),
     "Consejo Varas": L.geoJSON(null, { style: { color: coloresCapas["Consejo Varas"], weight: 2 } }),
     "Cor Mangle": L.geoJSON(null, { style: { color: coloresCapas["Cor Mangle"], weight: 2 } }),
     "Mangle Consejo": L.geoJSON(null, { style: { color: coloresCapas["Mangle Consejo"], weight: 2 } }),
     "Tumaco": L.geoJSON(null, { style: { color: coloresCapas["Tumaco"], weight: 2 } }),
     "Constricciones": L.geoJSON(null, { style: { color: coloresCapas["Constricciones"], weight: 2 } })
-     "Dibujos": new L.FeatureGroup(),
-};
+     };
 
 // Cargar datos GeoJSON
 function cargarCapa(nombre, archivo) {
